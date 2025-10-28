@@ -1,4 +1,5 @@
-# Astro with Tailwind
+# is117-ai-website
+Website used for NJIT class project. Check out the live version [here](https://aisite-is117.vercel.app).
 
 # Commands
 ```bash

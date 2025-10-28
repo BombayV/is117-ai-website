@@ -5,5 +5,5 @@ Disallow: /admin/
 Crawl-delay: 5
 
 # Sitemap and Host should use your absolute site URL. Replace example.com.
-Sitemap: https://example.com/sitemap.xml
-Host: https://example.com
+Sitemap: https://aisite-is117.vercel.app/sitemap.xml
+Host: https://aisite-is117.vercel.app
