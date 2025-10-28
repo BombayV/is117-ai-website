@@ -1,7 +1,9 @@
 # is117-ai-website
+
 Website used for NJIT class project. Check out the live version [here](https://aisite-is117.vercel.app).
 
 # Commands
+
 ```bash
 bun run dev # Start development server
 bun run build # Build for production
