@@ -7,6 +7,7 @@
         "@astrojs/mdx": "^4.3.8",
         "@astrojs/react": "^4.4.0",
         "@astrojs/vercel": "^9.0.0",
+        "@lucide/astro": "^0.552.0",
         "@tailwindcss/vite": "^4.1.16",
         "@types/canvas-confetti": "^1.9.0",
         "@types/react": "^19.2.2",
@@ -260,6 +261,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@lucide/astro": ["@lucide/astro@0.552.0", "", { "peerDependencies": { "astro": "^4 || ^5" } }, "sha512-nPO3RPor+3eOeom+KDmNGDSLYec5DYn5jc085FNNqIpUkl6kH8wnxZhtd53aGJleYrUt3/xIbwLxsrU1cm6epg=="],
 
     "@mapbox/node-pre-gyp": ["@mapbox/node-pre-gyp@2.0.0", "", { "dependencies": { "consola": "^3.2.3", "detect-libc": "^2.0.0", "https-proxy-agent": "^7.0.5", "node-fetch": "^2.6.7", "nopt": "^8.0.0", "semver": "^7.5.3", "tar": "^7.4.0" }, "bin": { "node-pre-gyp": "bin/node-pre-gyp" } }, "sha512-llMXd39jtP0HpQLVI37Bf1m2ADlEb35GYSh1SDSLsBhR+5iCxiNGlT31yqbNtVHygHAtMy6dWFERpU2JgufhPg=="],
 
