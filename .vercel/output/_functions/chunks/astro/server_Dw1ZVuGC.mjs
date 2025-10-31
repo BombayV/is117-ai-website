@@ -1,9 +1,14 @@
-import colors from 'picocolors';
-import { clsx } from 'clsx';
-import { escape } from 'html-escaper';
-import { decodeBase64, encodeBase64, encodeHexUpperCase, decodeHex } from '@oslojs/encoding';
-import { z } from 'zod';
-import 'cssesc';
+import colors from "picocolors";
+import { clsx } from "clsx";
+import { escape } from "html-escaper";
+import {
+  decodeBase64,
+  encodeBase64,
+  encodeHexUpperCase,
+  decodeHex,
+} from "@oslojs/encoding";
+import { z } from "zod";
+import "cssesc";
 
 const ASTRO_VERSION = "5.15.1";
 const REROUTE_DIRECTIVE_HEADER = "X-Astro-Reroute";
@@ -17,310 +22,377 @@ const REROUTABLE_STATUS_CODES = [404, 500];
 const clientAddressSymbol = Symbol.for("astro.clientAddress");
 const originPathnameSymbol = Symbol.for("astro.originPathname");
 const nodeRequestAbortControllerCleanupSymbol = Symbol.for(
-  "astro.nodeRequestAbortControllerCleanup"
+  "astro.nodeRequestAbortControllerCleanup",
 );
 const responseSentSymbol = Symbol.for("astro.responseSent");
 
 const ClientAddressNotAvailable = {
   name: "ClientAddressNotAvailable",
   title: "`Astro.clientAddress` is not available in current adapter.",
-  message: (adapterName) => `\`Astro.clientAddress\` is not available in the \`${adapterName}\` adapter. File an issue with the adapter to add support.`
+  message: (adapterName) =>
+    `\`Astro.clientAddress\` is not available in the \`${adapterName}\` adapter. File an issue with the adapter to add support.`,
 };
 const PrerenderClientAddressNotAvailable = {
   name: "PrerenderClientAddressNotAvailable",
   title: "`Astro.clientAddress` cannot be used inside prerendered routes.",
-  message: (name) => `\`Astro.clientAddress\` cannot be used inside prerendered route ${name}`
+  message: (name) =>
+    `\`Astro.clientAddress\` cannot be used inside prerendered route ${name}`,
 };
 const StaticClientAddressNotAvailable = {
   name: "StaticClientAddressNotAvailable",
   title: "`Astro.clientAddress` is not available in prerendered pages.",
-  message: "`Astro.clientAddress` is only available on pages that are server-rendered.",
-  hint: "See https://docs.astro.build/en/guides/on-demand-rendering/ for more information on how to enable SSR."
+  message:
+    "`Astro.clientAddress` is only available on pages that are server-rendered.",
+  hint: "See https://docs.astro.build/en/guides/on-demand-rendering/ for more information on how to enable SSR.",
 };
 const NoMatchingStaticPathFound = {
   name: "NoMatchingStaticPathFound",
   title: "No static path found for requested path.",
-  message: (pathName) => `A \`getStaticPaths()\` route pattern was matched, but no matching static path was found for requested path \`${pathName}\`.`,
-  hint: (possibleRoutes) => `Possible dynamic routes being matched: ${possibleRoutes.join(", ")}.`
+  message: (pathName) =>
+    `A \`getStaticPaths()\` route pattern was matched, but no matching static path was found for requested path \`${pathName}\`.`,
+  hint: (possibleRoutes) =>
+    `Possible dynamic routes being matched: ${possibleRoutes.join(", ")}.`,
 };
 const OnlyResponseCanBeReturned = {
   name: "OnlyResponseCanBeReturned",
   title: "Invalid type returned by Astro page.",
-  message: (route, returnedValue) => `Route \`${route ? route : ""}\` returned a \`${returnedValue}\`. Only a [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) can be returned from Astro files.`,
-  hint: "See https://docs.astro.build/en/guides/on-demand-rendering/#response for more information."
+  message: (route, returnedValue) =>
+    `Route \`${route ? route : ""}\` returned a \`${returnedValue}\`. Only a [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) can be returned from Astro files.`,
+  hint: "See https://docs.astro.build/en/guides/on-demand-rendering/#response for more information.",
 };
 const MissingMediaQueryDirective = {
   name: "MissingMediaQueryDirective",
   title: "Missing value for `client:media` directive.",
-  message: 'Media query not provided for `client:media` directive. A media query similar to `client:media="(max-width: 600px)"` must be provided'
+  message:
+    'Media query not provided for `client:media` directive. A media query similar to `client:media="(max-width: 600px)"` must be provided',
 };
 const NoMatchingRenderer = {
   name: "NoMatchingRenderer",
   title: "No matching renderer found.",
-  message: (componentName, componentExtension, plural, validRenderersCount) => `Unable to render \`${componentName}\`.
+  message: (
+    componentName,
+    componentExtension,
+    plural,
+    validRenderersCount,
+  ) => `Unable to render \`${componentName}\`.
 
-${validRenderersCount > 0 ? `There ${plural ? "are" : "is"} ${validRenderersCount} renderer${plural ? "s" : ""} configured in your \`astro.config.mjs\` file,
-but ${plural ? "none were" : "it was not"} able to server-side render \`${componentName}\`.` : `No valid renderer was found ${componentExtension ? `for the \`.${componentExtension}\` file extension.` : `for this file extension.`}`}`,
-  hint: (probableRenderers) => `Did you mean to enable the ${probableRenderers} integration?
+${
+  validRenderersCount > 0
+    ? `There ${plural ? "are" : "is"} ${validRenderersCount} renderer${plural ? "s" : ""} configured in your \`astro.config.mjs\` file,
+but ${plural ? "none were" : "it was not"} able to server-side render \`${componentName}\`.`
+    : `No valid renderer was found ${componentExtension ? `for the \`.${componentExtension}\` file extension.` : `for this file extension.`}`
+}`,
+  hint: (
+    probableRenderers,
+  ) => `Did you mean to enable the ${probableRenderers} integration?
 
-See https://docs.astro.build/en/guides/framework-components/ for more information on how to install and configure integrations.`
+See https://docs.astro.build/en/guides/framework-components/ for more information on how to install and configure integrations.`,
 };
 const NoClientOnlyHint = {
   name: "NoClientOnlyHint",
   title: "Missing hint on client:only directive.",
-  message: (componentName) => `Unable to render \`${componentName}\`. When using the \`client:only\` hydration strategy, Astro needs a hint to use the correct renderer.`,
-  hint: (probableRenderers) => `Did you mean to pass \`client:only="${probableRenderers}"\`? See https://docs.astro.build/en/reference/directives-reference/#clientonly for more information on client:only`
+  message: (componentName) =>
+    `Unable to render \`${componentName}\`. When using the \`client:only\` hydration strategy, Astro needs a hint to use the correct renderer.`,
+  hint: (probableRenderers) =>
+    `Did you mean to pass \`client:only="${probableRenderers}"\`? See https://docs.astro.build/en/reference/directives-reference/#clientonly for more information on client:only`,
 };
 const InvalidGetStaticPathsEntry = {
   name: "InvalidGetStaticPathsEntry",
   title: "Invalid entry inside getStaticPath's return value",
-  message: (entryType) => `Invalid entry returned by getStaticPaths. Expected an object, got \`${entryType}\``,
-  hint: "If you're using a `.map` call, you might be looking for `.flatMap()` instead. See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths."
+  message: (entryType) =>
+    `Invalid entry returned by getStaticPaths. Expected an object, got \`${entryType}\``,
+  hint: "If you're using a `.map` call, you might be looking for `.flatMap()` instead. See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths.",
 };
 const InvalidGetStaticPathsReturn = {
   name: "InvalidGetStaticPathsReturn",
   title: "Invalid value returned by getStaticPaths.",
-  message: (returnType) => `Invalid type returned by \`getStaticPaths\`. Expected an \`array\`, got \`${returnType}\``,
-  hint: "See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths."
+  message: (returnType) =>
+    `Invalid type returned by \`getStaticPaths\`. Expected an \`array\`, got \`${returnType}\``,
+  hint: "See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths.",
 };
 const GetStaticPathsExpectedParams = {
   name: "GetStaticPathsExpectedParams",
   title: "Missing params property on `getStaticPaths` route.",
-  message: "Missing or empty required `params` property on `getStaticPaths` route.",
-  hint: "See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths."
+  message:
+    "Missing or empty required `params` property on `getStaticPaths` route.",
+  hint: "See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths.",
 };
 const GetStaticPathsInvalidRouteParam = {
   name: "GetStaticPathsInvalidRouteParam",
   title: "Invalid value for `getStaticPaths` route parameter.",
-  message: (key, value, valueType) => `Invalid getStaticPaths route parameter for \`${key}\`. Expected undefined, a string or a number, received \`${valueType}\` (\`${value}\`)`,
-  hint: "See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths."
+  message: (key, value, valueType) =>
+    `Invalid getStaticPaths route parameter for \`${key}\`. Expected undefined, a string or a number, received \`${valueType}\` (\`${value}\`)`,
+  hint: "See https://docs.astro.build/en/reference/routing-reference/#getstaticpaths for more information on getStaticPaths.",
 };
 const GetStaticPathsRequired = {
   name: "GetStaticPathsRequired",
   title: "`getStaticPaths()` function required for dynamic routes.",
-  message: "`getStaticPaths()` function is required for dynamic routes. Make sure that you `export` a `getStaticPaths` function from your dynamic route.",
+  message:
+    "`getStaticPaths()` function is required for dynamic routes. Make sure that you `export` a `getStaticPaths` function from your dynamic route.",
   hint: `See https://docs.astro.build/en/guides/routing/#dynamic-routes for more information on dynamic routes.
 
-	If you meant for this route to be server-rendered, set \`export const prerender = false;\` in the page.`
+	If you meant for this route to be server-rendered, set \`export const prerender = false;\` in the page.`,
 };
 const ReservedSlotName = {
   name: "ReservedSlotName",
   title: "Invalid slot name.",
-  message: (slotName) => `Unable to create a slot named \`${slotName}\`. \`${slotName}\` is a reserved slot name. Please update the name of this slot.`
+  message: (slotName) =>
+    `Unable to create a slot named \`${slotName}\`. \`${slotName}\` is a reserved slot name. Please update the name of this slot.`,
 };
 const NoMatchingImport = {
   name: "NoMatchingImport",
   title: "No import found for component.",
-  message: (componentName) => `Could not render \`${componentName}\`. No matching import has been found for \`${componentName}\`.`,
-  hint: "Please make sure the component is properly imported."
+  message: (componentName) =>
+    `Could not render \`${componentName}\`. No matching import has been found for \`${componentName}\`.`,
+  hint: "Please make sure the component is properly imported.",
 };
 const InvalidComponentArgs = {
   name: "InvalidComponentArgs",
   title: "Invalid component arguments.",
-  message: (name) => `Invalid arguments passed to${name ? ` <${name}>` : ""} component.`,
-  hint: "Astro components cannot be rendered directly via function call, such as `Component()` or `{items.map(Component)}`."
+  message: (name) =>
+    `Invalid arguments passed to${name ? ` <${name}>` : ""} component.`,
+  hint: "Astro components cannot be rendered directly via function call, such as `Component()` or `{items.map(Component)}`.",
 };
 const PageNumberParamNotFound = {
   name: "PageNumberParamNotFound",
   title: "Page number param not found.",
-  message: (paramName) => `[paginate()] page number param \`${paramName}\` not found in your filepath.`,
-  hint: "Rename your file to `[page].astro` or `[...page].astro`."
+  message: (paramName) =>
+    `[paginate()] page number param \`${paramName}\` not found in your filepath.`,
+  hint: "Rename your file to `[page].astro` or `[...page].astro`.",
 };
 const ImageMissingAlt = {
   name: "ImageMissingAlt",
   title: 'Image missing required "alt" property.',
-  message: 'Image missing "alt" property. "alt" text is required to describe important images on the page.',
-  hint: 'Use an empty string ("") for decorative images.'
+  message:
+    'Image missing "alt" property. "alt" text is required to describe important images on the page.',
+  hint: 'Use an empty string ("") for decorative images.',
 };
 const InvalidImageService = {
   name: "InvalidImageService",
   title: "Error while loading image service.",
-  message: "There was an error loading the configured image service. Please see the stack trace for more information."
+  message:
+    "There was an error loading the configured image service. Please see the stack trace for more information.",
 };
 const MissingImageDimension = {
   name: "MissingImageDimension",
   title: "Missing image dimensions",
-  message: (missingDimension, imageURL) => `Missing ${missingDimension === "both" ? "width and height attributes" : `${missingDimension} attribute`} for ${imageURL}. When using remote images, both dimensions are required in order to avoid CLS.`,
-  hint: "If your image is inside your `src` folder, you probably meant to import it instead. See [the Imports guide for more information](https://docs.astro.build/en/guides/imports/#other-assets). You can also use `inferSize={true}` for remote images to get the original dimensions."
+  message: (missingDimension, imageURL) =>
+    `Missing ${missingDimension === "both" ? "width and height attributes" : `${missingDimension} attribute`} for ${imageURL}. When using remote images, both dimensions are required in order to avoid CLS.`,
+  hint: "If your image is inside your `src` folder, you probably meant to import it instead. See [the Imports guide for more information](https://docs.astro.build/en/guides/imports/#other-assets). You can also use `inferSize={true}` for remote images to get the original dimensions.",
 };
 const FailedToFetchRemoteImageDimensions = {
   name: "FailedToFetchRemoteImageDimensions",
   title: "Failed to retrieve remote image dimensions",
   message: (imageURL) => `Failed to get the dimensions for ${imageURL}.`,
-  hint: "Verify your remote image URL is accurate, and that you are not using `inferSize` with a file located in your `public/` folder."
+  hint: "Verify your remote image URL is accurate, and that you are not using `inferSize` with a file located in your `public/` folder.",
 };
 const UnsupportedImageFormat = {
   name: "UnsupportedImageFormat",
   title: "Unsupported image format",
-  message: (format, imagePath, supportedFormats) => `Received unsupported format \`${format}\` from \`${imagePath}\`. Currently only ${supportedFormats.join(
-    ", "
-  )} are supported by our image services.`,
-  hint: "Using an `img` tag directly instead of the `Image` component might be what you're looking for."
+  message: (format, imagePath, supportedFormats) =>
+    `Received unsupported format \`${format}\` from \`${imagePath}\`. Currently only ${supportedFormats.join(
+      ", ",
+    )} are supported by our image services.`,
+  hint: "Using an `img` tag directly instead of the `Image` component might be what you're looking for.",
 };
 const UnsupportedImageConversion = {
   name: "UnsupportedImageConversion",
   title: "Unsupported image conversion",
-  message: "Converting between vector (such as SVGs) and raster (such as PNGs and JPEGs) images is not currently supported."
+  message:
+    "Converting between vector (such as SVGs) and raster (such as PNGs and JPEGs) images is not currently supported.",
 };
 const PrerenderDynamicEndpointPathCollide = {
   name: "PrerenderDynamicEndpointPathCollide",
   title: "Prerendered dynamic endpoint has path collision.",
-  message: (pathname) => `Could not render \`${pathname}\` with an \`undefined\` param as the generated path will collide during prerendering. Prevent passing \`undefined\` as \`params\` for the endpoint's \`getStaticPaths()\` function, or add an additional extension to the endpoint's filename.`,
-  hint: (filename) => `Rename \`${filename}\` to \`${filename.replace(/\.(?:js|ts)/, (m) => `.json` + m)}\``
+  message: (pathname) =>
+    `Could not render \`${pathname}\` with an \`undefined\` param as the generated path will collide during prerendering. Prevent passing \`undefined\` as \`params\` for the endpoint's \`getStaticPaths()\` function, or add an additional extension to the endpoint's filename.`,
+  hint: (filename) =>
+    `Rename \`${filename}\` to \`${filename.replace(/\.(?:js|ts)/, (m) => `.json` + m)}\``,
 };
 const ExpectedImage = {
   name: "ExpectedImage",
   title: "Expected src to be an image.",
-  message: (src, typeofOptions, fullOptions) => `Expected \`src\` property for \`getImage\` or \`<Image />\` to be either an ESM imported image or a string with the path of a remote image. Received \`${src}\` (type: \`${typeofOptions}\`).
+  message: (
+    src,
+    typeofOptions,
+    fullOptions,
+  ) => `Expected \`src\` property for \`getImage\` or \`<Image />\` to be either an ESM imported image or a string with the path of a remote image. Received \`${src}\` (type: \`${typeofOptions}\`).
 
 Full serialized options received: \`${fullOptions}\`.`,
-  hint: "This error can often happen because of a wrong path. Make sure the path to your image is correct. If you're passing an async function, make sure to call and await it."
+  hint: "This error can often happen because of a wrong path. Make sure the path to your image is correct. If you're passing an async function, make sure to call and await it.",
 };
 const ExpectedImageOptions = {
   name: "ExpectedImageOptions",
   title: "Expected image options.",
-  message: (options) => `Expected getImage() parameter to be an object. Received \`${options}\`.`
+  message: (options) =>
+    `Expected getImage() parameter to be an object. Received \`${options}\`.`,
 };
 const ExpectedNotESMImage = {
   name: "ExpectedNotESMImage",
   title: "Expected image options, not an ESM-imported image.",
-  message: "An ESM-imported image cannot be passed directly to `getImage()`. Instead, pass an object with the image in the `src` property.",
-  hint: "Try changing `getImage(myImage)` to `getImage({ src: myImage })`"
+  message:
+    "An ESM-imported image cannot be passed directly to `getImage()`. Instead, pass an object with the image in the `src` property.",
+  hint: "Try changing `getImage(myImage)` to `getImage({ src: myImage })`",
 };
 const IncompatibleDescriptorOptions = {
   name: "IncompatibleDescriptorOptions",
   title: "Cannot set both `densities` and `widths`",
-  message: "Only one of `densities` or `widths` can be specified. In most cases, you'll probably want to use only `widths` if you require specific widths.",
-  hint: "Those attributes are used to construct a `srcset` attribute, which cannot have both `x` and `w` descriptors."
+  message:
+    "Only one of `densities` or `widths` can be specified. In most cases, you'll probably want to use only `widths` if you require specific widths.",
+  hint: "Those attributes are used to construct a `srcset` attribute, which cannot have both `x` and `w` descriptors.",
 };
 const NoImageMetadata = {
   name: "NoImageMetadata",
   title: "Could not process image metadata.",
-  message: (imagePath) => `Could not process image metadata${imagePath ? ` for \`${imagePath}\`` : ""}.`,
-  hint: "This is often caused by a corrupted or malformed image. Re-exporting the image from your image editor may fix this issue."
+  message: (imagePath) =>
+    `Could not process image metadata${imagePath ? ` for \`${imagePath}\`` : ""}.`,
+  hint: "This is often caused by a corrupted or malformed image. Re-exporting the image from your image editor may fix this issue.",
 };
 const ResponseSentError = {
   name: "ResponseSentError",
   title: "Unable to set response.",
-  message: "The response has already been sent to the browser and cannot be altered."
+  message:
+    "The response has already been sent to the browser and cannot be altered.",
 };
 const MiddlewareNoDataOrNextCalled = {
   name: "MiddlewareNoDataOrNextCalled",
   title: "The middleware didn't return a `Response`.",
-  message: "Make sure your middleware returns a `Response` object, either directly or by returning the `Response` from calling the `next` function."
+  message:
+    "Make sure your middleware returns a `Response` object, either directly or by returning the `Response` from calling the `next` function.",
 };
 const MiddlewareNotAResponse = {
   name: "MiddlewareNotAResponse",
   title: "The middleware returned something that is not a `Response` object.",
-  message: "Any data returned from middleware must be a valid `Response` object."
+  message:
+    "Any data returned from middleware must be a valid `Response` object.",
 };
 const EndpointDidNotReturnAResponse = {
   name: "EndpointDidNotReturnAResponse",
   title: "The endpoint did not return a `Response`.",
-  message: "An endpoint must return either a `Response`, or a `Promise` that resolves with a `Response`."
+  message:
+    "An endpoint must return either a `Response`, or a `Promise` that resolves with a `Response`.",
 };
 const LocalsNotAnObject = {
   name: "LocalsNotAnObject",
   title: "Value assigned to `locals` is not accepted.",
-  message: "`locals` can only be assigned to an object. Other values like numbers, strings, etc. are not accepted.",
-  hint: "If you tried to remove some information from the `locals` object, try to use `delete` or set the property to `undefined`."
+  message:
+    "`locals` can only be assigned to an object. Other values like numbers, strings, etc. are not accepted.",
+  hint: "If you tried to remove some information from the `locals` object, try to use `delete` or set the property to `undefined`.",
 };
 const LocalsReassigned = {
   name: "LocalsReassigned",
   title: "`locals` must not be reassigned.",
   message: "`locals` can not be assigned directly.",
-  hint: "Set a `locals` property instead."
+  hint: "Set a `locals` property instead.",
 };
 const AstroResponseHeadersReassigned = {
   name: "AstroResponseHeadersReassigned",
   title: "`Astro.response.headers` must not be reassigned.",
-  message: "Individual headers can be added to and removed from `Astro.response.headers`, but it must not be replaced with another instance of `Headers` altogether.",
-  hint: "Consider using `Astro.response.headers.add()`, and `Astro.response.headers.delete()`."
+  message:
+    "Individual headers can be added to and removed from `Astro.response.headers`, but it must not be replaced with another instance of `Headers` altogether.",
+  hint: "Consider using `Astro.response.headers.add()`, and `Astro.response.headers.delete()`.",
 };
 const LocalImageUsedWrongly = {
   name: "LocalImageUsedWrongly",
   title: "Local images must be imported.",
-  message: (imageFilePath) => `\`Image\`'s and \`getImage\`'s \`src\` parameter must be an imported image or an URL, it cannot be a string filepath. Received \`${imageFilePath}\`.`,
-  hint: "If you want to use an image from your `src` folder, you need to either import it or if the image is coming from a content collection, use the [image() schema helper](https://docs.astro.build/en/guides/images/#images-in-content-collections). See https://docs.astro.build/en/guides/images/#src-required for more information on the `src` property."
+  message: (imageFilePath) =>
+    `\`Image\`'s and \`getImage\`'s \`src\` parameter must be an imported image or an URL, it cannot be a string filepath. Received \`${imageFilePath}\`.`,
+  hint: "If you want to use an image from your `src` folder, you need to either import it or if the image is coming from a content collection, use the [image() schema helper](https://docs.astro.build/en/guides/images/#images-in-content-collections). See https://docs.astro.build/en/guides/images/#src-required for more information on the `src` property.",
 };
 const AstroGlobUsedOutside = {
   name: "AstroGlobUsedOutside",
   title: "Astro.glob() used outside of an Astro file.",
-  message: (globStr) => `\`Astro.glob(${globStr})\` can only be used in \`.astro\` files. \`import.meta.glob(${globStr})\` can be used instead to achieve a similar result.`,
-  hint: "See Vite's documentation on `import.meta.glob` for more information: https://vite.dev/guide/features.html#glob-import"
+  message: (globStr) =>
+    `\`Astro.glob(${globStr})\` can only be used in \`.astro\` files. \`import.meta.glob(${globStr})\` can be used instead to achieve a similar result.`,
+  hint: "See Vite's documentation on `import.meta.glob` for more information: https://vite.dev/guide/features.html#glob-import",
 };
 const AstroGlobNoMatch = {
   name: "AstroGlobNoMatch",
   title: "Astro.glob() did not match any files.",
-  message: (globStr) => `\`Astro.glob(${globStr})\` did not return any matching files.`,
-  hint: "Check the pattern for typos."
+  message: (globStr) =>
+    `\`Astro.glob(${globStr})\` did not return any matching files.`,
+  hint: "Check the pattern for typos.",
 };
 const MissingSharp = {
   name: "MissingSharp",
   title: "Could not find Sharp.",
-  message: "Could not find Sharp. Please install Sharp (`sharp`) manually into your project or migrate to another image service.",
-  hint: "See Sharp's installation instructions for more information: https://sharp.pixelplumbing.com/install. If you are not relying on `astro:assets` to optimize, transform, or process any images, you can configure a passthrough image service instead of installing Sharp. See https://docs.astro.build/en/reference/errors/missing-sharp for more information.\n\nSee https://docs.astro.build/en/guides/images/#default-image-service for more information on how to migrate to another image service."
+  message:
+    "Could not find Sharp. Please install Sharp (`sharp`) manually into your project or migrate to another image service.",
+  hint: "See Sharp's installation instructions for more information: https://sharp.pixelplumbing.com/install. If you are not relying on `astro:assets` to optimize, transform, or process any images, you can configure a passthrough image service instead of installing Sharp. See https://docs.astro.build/en/reference/errors/missing-sharp for more information.\n\nSee https://docs.astro.build/en/guides/images/#default-image-service for more information on how to migrate to another image service.",
 };
 const i18nNoLocaleFoundInPath = {
   name: "i18nNoLocaleFoundInPath",
   title: "The path doesn't contain any locale",
-  message: "You tried to use an i18n utility on a path that doesn't contain any locale. You can use `pathHasLocale` first to determine if the path has a locale."
+  message:
+    "You tried to use an i18n utility on a path that doesn't contain any locale. You can use `pathHasLocale` first to determine if the path has a locale.",
 };
 const RewriteWithBodyUsed = {
   name: "RewriteWithBodyUsed",
   title: "Cannot use Astro.rewrite after the request body has been read",
-  message: "Astro.rewrite() cannot be used if the request body has already been read. If you need to read the body, first clone the request."
+  message:
+    "Astro.rewrite() cannot be used if the request body has already been read. If you need to read the body, first clone the request.",
 };
 const ForbiddenRewrite = {
   name: "ForbiddenRewrite",
   title: "Forbidden rewrite to a static route.",
-  message: (from, to, component) => `You tried to rewrite the on-demand route '${from}' with the static route '${to}', when using the 'server' output. 
+  message: (
+    from,
+    to,
+    component,
+  ) => `You tried to rewrite the on-demand route '${from}' with the static route '${to}', when using the 'server' output. 
 
 The static route '${to}' is rendered by the component
 '${component}', which is marked as prerendered. This is a forbidden operation because during the build the component '${component}' is compiled to an
 HTML file, which can't be retrieved at runtime by Astro.`,
-  hint: (component) => `Add \`export const prerender = false\` to the component '${component}', or use a Astro.redirect().`
+  hint: (component) =>
+    `Add \`export const prerender = false\` to the component '${component}', or use a Astro.redirect().`,
 };
 const ExperimentalFontsNotEnabled = {
   name: "ExperimentalFontsNotEnabled",
   title: "Experimental fonts are not enabled",
-  message: "The Font component is used but experimental fonts have not been registered in the config.",
-  hint: "Check that you have enabled experimental fonts and also configured your preferred fonts."
+  message:
+    "The Font component is used but experimental fonts have not been registered in the config.",
+  hint: "Check that you have enabled experimental fonts and also configured your preferred fonts.",
 };
 const FontFamilyNotFound = {
   name: "FontFamilyNotFound",
   title: "Font family not found",
-  message: (family) => `No data was found for the \`"${family}"\` family passed to the \`<Font>\` component.`,
-  hint: "This is often caused by a typo. Check that the `<Font />` component or `getFontData()` function are using a `cssVariable` specified in your config."
+  message: (family) =>
+    `No data was found for the \`"${family}"\` family passed to the \`<Font>\` component.`,
+  hint: "This is often caused by a typo. Check that the `<Font />` component or `getFontData()` function are using a `cssVariable` specified in your config.",
 };
 const CspNotEnabled = {
   name: "CspNotEnabled",
   title: "CSP feature isn't enabled",
-  message: "The `experimental.csp` configuration isn't enabled."
+  message: "The `experimental.csp` configuration isn't enabled.",
 };
 const ActionsReturnedInvalidDataError = {
   name: "ActionsReturnedInvalidDataError",
   title: "Action handler returned invalid data.",
-  message: (error) => `Action handler returned invalid data. Handlers should return serializable data types like objects, arrays, strings, and numbers. Parse error: ${error}`,
-  hint: "See the devalue library for all supported types: https://github.com/rich-harris/devalue"
+  message: (error) =>
+    `Action handler returned invalid data. Handlers should return serializable data types like objects, arrays, strings, and numbers. Parse error: ${error}`,
+  hint: "See the devalue library for all supported types: https://github.com/rich-harris/devalue",
 };
 const ActionNotFoundError = {
   name: "ActionNotFoundError",
   title: "Action not found.",
-  message: (actionName) => `The server received a request for an action named \`${actionName}\` but could not find a match. If you renamed an action, check that you've updated your \`actions/index\` file and your calling code to match.`,
-  hint: "You can run `astro check` to detect type errors caused by mismatched action names."
+  message: (actionName) =>
+    `The server received a request for an action named \`${actionName}\` but could not find a match. If you renamed an action, check that you've updated your \`actions/index\` file and your calling code to match.`,
+  hint: "You can run `astro check` to detect type errors caused by mismatched action names.",
 };
 const SessionStorageInitError = {
   name: "SessionStorageInitError",
   title: "Session storage could not be initialized.",
-  message: (error, driver) => `Error when initializing session storage${driver ? ` with driver \`${driver}\`` : ""}. \`${error ?? ""}\``,
-  hint: "For more information, see https://docs.astro.build/en/guides/sessions/"
+  message: (error, driver) =>
+    `Error when initializing session storage${driver ? ` with driver \`${driver}\`` : ""}. \`${error ?? ""}\``,
+  hint: "For more information, see https://docs.astro.build/en/guides/sessions/",
 };
 const SessionStorageSaveError = {
   name: "SessionStorageSaveError",
   title: "Session data could not be saved.",
-  message: (error, driver) => `Error when saving session data${driver ? ` with driver \`${driver}\`` : ""}. \`${error ?? ""}\``,
-  hint: "For more information, see https://docs.astro.build/en/guides/sessions/"
+  message: (error, driver) =>
+    `Error when saving session data${driver ? ` with driver \`${driver}\`` : ""}. \`${error ?? ""}\``,
+  hint: "For more information, see https://docs.astro.build/en/guides/sessions/",
 };
 
 function normalizeLF(code) {
@@ -331,7 +403,9 @@ function codeFrame(src, loc) {
   if (!loc || loc.line === void 0 || loc.column === void 0) {
     return "";
   }
-  const lines = normalizeLF(src).split("\n").map((ln) => ln.replace(/\t/g, "  "));
+  const lines = normalizeLF(src)
+    .split("\n")
+    .map((ln) => ln.replace(/\t/g, "  "));
   const visibleLines = [];
   for (let n = -2; n <= 2; n++) {
     if (lines[loc.line + n]) visibleLines.push(loc.line + n);
@@ -348,9 +422,11 @@ function codeFrame(src, loc) {
     output += `${lineNo + 1} | ${lines[lineNo]}
 `;
     if (isFocusedLine)
-      output += `${Array.from({ length: gutterWidth }).join(" ")}  | ${Array.from({
-        length: loc.column
-      }).join(" ")}^
+      output += `${Array.from({ length: gutterWidth }).join(" ")}  | ${Array.from(
+        {
+          length: loc.column,
+        },
+      ).join(" ")}^
 `;
   }
   return output;
@@ -404,7 +480,7 @@ function baseCreateComponent(cb, moduleId, propagation) {
     if (!validateArgs(args)) {
       throw new AstroError({
         ...InvalidComponentArgs,
-        message: InvalidComponentArgs.message(name)
+        message: InvalidComponentArgs.message(name),
       });
     }
     return cb(...args);
@@ -434,14 +510,16 @@ Use import.meta.glob instead: https://vitejs.dev/guide/features.html#glob-import
     if (typeof importMetaGlobResult === "string") {
       throw new AstroError({
         ...AstroGlobUsedOutside,
-        message: AstroGlobUsedOutside.message(JSON.stringify(importMetaGlobResult))
+        message: AstroGlobUsedOutside.message(
+          JSON.stringify(importMetaGlobResult),
+        ),
       });
     }
     let allEntries = [...Object.values(importMetaGlobResult)];
     if (allEntries.length === 0) {
       throw new AstroError({
         ...AstroGlobNoMatch,
-        message: AstroGlobNoMatch.message(JSON.stringify(importMetaGlobResult))
+        message: AstroGlobNoMatch.message(JSON.stringify(importMetaGlobResult)),
       });
     }
     return Promise.all(allEntries.map((fn) => fn()));
@@ -452,7 +530,7 @@ function createAstro(site) {
   return {
     site: void 0,
     generator: `Astro v${ASTRO_VERSION}`,
-    glob: createAstroGlobFn()
+    glob: createAstroGlobFn(),
   };
 }
 
@@ -467,24 +545,29 @@ async function renderEndpoint(mod, context, isPrerendered, logger) {
     logger.warn(
       "router",
       `${url.pathname} ${colors.bold(
-        method
-      )} requests are not available in static endpoints. Mark this page as server-rendered (\`export const prerender = false;\`) or update your config to \`output: 'server'\` to make all your pages server-rendered by default.`
+        method,
+      )} requests are not available in static endpoints. Mark this page as server-rendered (\`export const prerender = false;\`) or update your config to \`output: 'server'\` to make all your pages server-rendered by default.`,
     );
   }
   if (handler === void 0) {
     logger.warn(
       "router",
       `No API Route handler exists for the method "${method}" for the route "${url.pathname}".
-Found handlers: ${Object.keys(mod).map((exp) => JSON.stringify(exp)).join(", ")}
-` + ("all" in mod ? `One of the exported handlers is "all" (lowercase), did you mean to export 'ALL'?
-` : "")
+Found handlers: ${Object.keys(mod)
+        .map((exp) => JSON.stringify(exp))
+        .join(", ")}
+` +
+        ("all" in mod
+          ? `One of the exported handlers is "all" (lowercase), did you mean to export 'ALL'?
+`
+          : ""),
     );
     return new Response(null, { status: 404 });
   }
   if (typeof handler !== "function") {
     logger.error(
       "router",
-      `The route "${url.pathname}" exports a value for the method "${method}", but it is of the type ${typeof handler} instead of a function.`
+      `The route "${url.pathname}" exports a value for the method "${method}", but it is of the type ${typeof handler} instead of a function.`,
     );
     return new Response(null, { status: 500 });
   }
@@ -511,7 +594,12 @@ Found handlers: ${Object.keys(mod).map((exp) => JSON.stringify(exp)).join(", ")}
 }
 
 function isPromise(value) {
-  return !!value && typeof value === "object" && "then" in value && typeof value.then === "function";
+  return (
+    !!value &&
+    typeof value === "object" &&
+    "then" in value &&
+    typeof value.then === "function"
+  );
 }
 async function* streamAsyncIterator(stream) {
   const reader = stream.getReader();
@@ -527,12 +615,11 @@ async function* streamAsyncIterator(stream) {
 }
 
 const escapeHTML = escape;
-class HTMLBytes extends Uint8Array {
-}
+class HTMLBytes extends Uint8Array {}
 Object.defineProperty(HTMLBytes.prototype, Symbol.toStringTag, {
   get() {
     return "HTMLBytes";
-  }
+  },
 });
 class HTMLString extends String {
   get [Symbol.toStringTag]() {
@@ -609,7 +696,11 @@ function isAPropagatingComponent(result, factory) {
 }
 function getPropagationHint(result, factory) {
   let hint = factory.propagation || "none";
-  if (factory.moduleId && result.componentMetadata.has(factory.moduleId) && hint === "none") {
+  if (
+    factory.moduleId &&
+    result.componentMetadata.has(factory.moduleId) &&
+    hint === "none"
+  ) {
     hint = result.componentMetadata.get(factory.moduleId).propagation;
   }
   return hint;
@@ -628,9 +719,13 @@ const PROP_TYPE = {
   Uint8Array: 8,
   Uint16Array: 9,
   Uint32Array: 10,
-  Infinity: 11
+  Infinity: 11,
 };
-function serializeArray(value, metadata = {}, parents = /* @__PURE__ */ new WeakSet()) {
+function serializeArray(
+  value,
+  metadata = {},
+  parents = /* @__PURE__ */ new WeakSet(),
+) {
   if (parents.has(value)) {
     throw new Error(`Cyclic reference detected while serializing props for <${metadata.displayName} client:${metadata.hydrate}>!
 
@@ -643,7 +738,11 @@ Cyclic references cannot be safely serialized for client-side usage. Please remo
   parents.delete(value);
   return serialized;
 }
-function serializeObject(value, metadata = {}, parents = /* @__PURE__ */ new WeakSet()) {
+function serializeObject(
+  value,
+  metadata = {},
+  parents = /* @__PURE__ */ new WeakSet(),
+) {
   if (parents.has(value)) {
     throw new Error(`Cyclic reference detected while serializing props for <${metadata.displayName} client:${metadata.hydrate}>!
 
@@ -653,12 +752,16 @@ Cyclic references cannot be safely serialized for client-side usage. Please remo
   const serialized = Object.fromEntries(
     Object.entries(value).map(([k, v]) => {
       return [k, convertToSerializedForm(v, metadata, parents)];
-    })
+    }),
   );
   parents.delete(value);
   return serialized;
 }
-function convertToSerializedForm(value, metadata = {}, parents = /* @__PURE__ */ new WeakSet()) {
+function convertToSerializedForm(
+  value,
+  metadata = {},
+  parents = /* @__PURE__ */ new WeakSet(),
+) {
   const tag = Object.prototype.toString.call(value);
   switch (tag) {
     case "[object Date]": {
@@ -668,10 +771,16 @@ function convertToSerializedForm(value, metadata = {}, parents = /* @__PURE__ */
       return [PROP_TYPE.RegExp, value.source];
     }
     case "[object Map]": {
-      return [PROP_TYPE.Map, serializeArray(Array.from(value), metadata, parents)];
+      return [
+        PROP_TYPE.Map,
+        serializeArray(Array.from(value), metadata, parents),
+      ];
     }
     case "[object Set]": {
-      return [PROP_TYPE.Set, serializeArray(Array.from(value), metadata, parents)];
+      return [
+        PROP_TYPE.Set,
+        serializeArray(Array.from(value), metadata, parents),
+      ];
     }
     case "[object BigInt]": {
       return [PROP_TYPE.BigInt, value.toString()];
@@ -716,14 +825,14 @@ function serializeProps(props, metadata) {
 const transitionDirectivesToCopyOnIsland = Object.freeze([
   "data-astro-transition-scope",
   "data-astro-transition-persist",
-  "data-astro-transition-persist-props"
+  "data-astro-transition-persist-props",
 ]);
 function extractDirectives(inputProps, clientDirectives) {
   let extracted = {
     isPage: false,
     hydration: null,
     props: {},
-    propsWithoutTransitionAttributes: {}
+    propsWithoutTransitionAttributes: {},
   };
   for (const [key, value] of Object.entries(inputProps)) {
     if (key.startsWith("server:")) {
@@ -737,7 +846,7 @@ function extractDirectives(inputProps, clientDirectives) {
           directive: "",
           value: "",
           componentUrl: "",
-          componentExport: { value: "" }
+          componentExport: { value: "" },
         };
       }
       switch (key) {
@@ -761,12 +870,17 @@ function extractDirectives(inputProps, clientDirectives) {
           extracted.hydration.directive = key.split(":")[1];
           extracted.hydration.value = value;
           if (!clientDirectives.has(extracted.hydration.directive)) {
-            const hydrationMethods = Array.from(clientDirectives.keys()).map((d) => `client:${d}`).join(", ");
+            const hydrationMethods = Array.from(clientDirectives.keys())
+              .map((d) => `client:${d}`)
+              .join(", ");
             throw new Error(
-              `Error: invalid hydration directive "${key}". Supported hydration methods: ${hydrationMethods}`
+              `Error: invalid hydration directive "${key}". Supported hydration methods: ${hydrationMethods}`,
             );
           }
-          if (extracted.hydration.directive === "media" && typeof extracted.hydration.value !== "string") {
+          if (
+            extracted.hydration.directive === "media" &&
+            typeof extracted.hydration.value !== "string"
+          ) {
             throw new AstroError(MissingMediaQueryDirective);
           }
           break;
@@ -791,15 +905,15 @@ async function generateHydrateScript(scriptOptions, metadata) {
   if (!componentExport.value) {
     throw new AstroError({
       ...NoMatchingImport,
-      message: NoMatchingImport.message(metadata.displayName)
+      message: NoMatchingImport.message(metadata.displayName),
     });
   }
   const island = {
     children: "",
     props: {
       // This is for HMR, probably can avoid it in prod
-      uid: astroId
-    }
+      uid: astroId,
+    },
   };
   if (attrs) {
     for (const [key, value] of Object.entries(attrs)) {
@@ -810,21 +924,23 @@ async function generateHydrateScript(scriptOptions, metadata) {
   if (renderer.clientEntrypoint) {
     island.props["component-export"] = componentExport.value;
     island.props["renderer-url"] = await result.resolve(
-      decodeURI(renderer.clientEntrypoint.toString())
+      decodeURI(renderer.clientEntrypoint.toString()),
     );
     island.props["props"] = escapeHTML(serializeProps(props, metadata));
   }
   island.props["ssr"] = "";
   island.props["client"] = hydrate;
-  let beforeHydrationUrl = await result.resolve("astro:scripts/before-hydration.js");
+  let beforeHydrationUrl = await result.resolve(
+    "astro:scripts/before-hydration.js",
+  );
   if (beforeHydrationUrl.length) {
     island.props["before-hydration-url"] = beforeHydrationUrl;
   }
   island.props["opts"] = escapeHTML(
     JSON.stringify({
       name: metadata.displayName,
-      value: metadata.hydrateArgs || ""
-    })
+      value: metadata.hydrateArgs || "",
+    }),
   );
   transitionDirectivesToCopyOnIsland.forEach((name) => {
     if (typeof props[name] !== "undefined") {
@@ -864,7 +980,8 @@ async function generateHydrateScript(scriptOptions, metadata) {
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  */
-const dictionary = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY";
+const dictionary =
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY";
 const binary = dictionary.length;
 function bitwise(str) {
   let hash = 0;
@@ -899,7 +1016,7 @@ function isHeadAndContent(obj) {
 }
 function createThinHead() {
   return {
-    [headAndContentSym]: true
+    [headAndContentSym]: true,
   };
 }
 
@@ -907,13 +1024,14 @@ var astro_island_prebuilt_default = `(()=>{var A=Object.defineProperty;var g=(i,
 
 var astro_island_prebuilt_dev_default = `(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var l=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>y(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>1/0*t},o=t=>{let[h,e]=t;return h in i?i[h](e):void 0},a=t=>t.map(o),y=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([h,e])=>[h,o(e)]));class f extends HTMLElement{constructor(){super(...arguments);l(this,"Component");l(this,"hydrator");l(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},p=this.querySelectorAll("template[data-astro-template]");for(let r of p){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let u;try{u=this.hasAttribute("props")?y(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=\` (export \${v})\`),console.error(\`[hydrate] Error parsing props for component \${s}\`,this.getAttribute("props"),r),r}let d,m=this.hydrator(this);d=performance.now(),await m(this.Component,u,n,{client:this.getAttribute("client")}),d&&this.setAttribute("client-render-time",(performance.now()-d).toString()),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});l(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(\`astro:\${c}\`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[p,{default:u}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),d=this.getAttribute("component-export")||"default";if(!d.includes("."))this.Component=p[d];else{this.Component=p;for(let m of d.split("."))this.Component=this.Component[m]}return this.hydrator=u,this.hydrate},e,this)}catch(n){console.error(\`[astro-island] Error hydrating \${this.getAttribute("component-url")}\`,n)}}attributeChangedCallback(){this.hydrate()}}l(f,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",f)}})();`;
 
-const ISLAND_STYLES = "astro-island,astro-slot,astro-static-slot{display:contents}";
+const ISLAND_STYLES =
+  "astro-island,astro-slot,astro-static-slot{display:contents}";
 
 function determineIfNeedsHydrationScript(result) {
   if (result._metadata.hasHydrationScript) {
     return false;
   }
-  return result._metadata.hasHydrationScript = true;
+  return (result._metadata.hasHydrationScript = true);
 }
 function determinesIfNeedsDirectiveScript(result, directive) {
   if (result._metadata.hasDirectives.has(directive)) {
@@ -975,34 +1093,51 @@ function renderCspContent(result) {
 const RenderInstructionSymbol = Symbol.for("astro:render");
 function createRenderInstruction(instruction) {
   return Object.defineProperty(instruction, RenderInstructionSymbol, {
-    value: true
+    value: true,
   });
 }
 function isRenderInstruction(chunk) {
   return chunk && typeof chunk === "object" && chunk[RenderInstructionSymbol];
 }
 
-const voidElementNames = /^(area|base|br|col|command|embed|hr|img|input|keygen|link|meta|param|source|track|wbr)$/i;
-const htmlBooleanAttributes = /^(?:allowfullscreen|async|autofocus|autoplay|checked|controls|default|defer|disabled|disablepictureinpicture|disableremoteplayback|formnovalidate|hidden|inert|loop|muted|nomodule|novalidate|open|playsinline|readonly|required|reversed|scoped|seamless|selected|itemscope)$/i;
+const voidElementNames =
+  /^(area|base|br|col|command|embed|hr|img|input|keygen|link|meta|param|source|track|wbr)$/i;
+const htmlBooleanAttributes =
+  /^(?:allowfullscreen|async|autofocus|autoplay|checked|controls|default|defer|disabled|disablepictureinpicture|disableremoteplayback|formnovalidate|hidden|inert|loop|muted|nomodule|novalidate|open|playsinline|readonly|required|reversed|scoped|seamless|selected|itemscope)$/i;
 const AMPERSAND_REGEX = /&/g;
 const DOUBLE_QUOTE_REGEX = /"/g;
 const STATIC_DIRECTIVES = /* @__PURE__ */ new Set(["set:html", "set:text"]);
-const toIdent = (k) => k.trim().replace(/(?!^)\b\w|\s+|\W+/g, (match, index) => {
-  if (/\W/.test(match)) return "";
-  return index === 0 ? match : match.toUpperCase();
-});
-const toAttributeString = (value, shouldEscape = true) => shouldEscape ? String(value).replace(AMPERSAND_REGEX, "&#38;").replace(DOUBLE_QUOTE_REGEX, "&#34;") : value;
-const kebab = (k) => k.toLowerCase() === k ? k : k.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
-const toStyleString = (obj) => Object.entries(obj).filter(([_, v]) => typeof v === "string" && v.trim() || typeof v === "number").map(([k, v]) => {
-  if (k[0] !== "-" && k[1] !== "-") return `${kebab(k)}:${v}`;
-  return `${k}:${v}`;
-}).join(";");
+const toIdent = (k) =>
+  k.trim().replace(/(?!^)\b\w|\s+|\W+/g, (match, index) => {
+    if (/\W/.test(match)) return "";
+    return index === 0 ? match : match.toUpperCase();
+  });
+const toAttributeString = (value, shouldEscape = true) =>
+  shouldEscape
+    ? String(value)
+        .replace(AMPERSAND_REGEX, "&#38;")
+        .replace(DOUBLE_QUOTE_REGEX, "&#34;")
+    : value;
+const kebab = (k) =>
+  k.toLowerCase() === k
+    ? k
+    : k.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+const toStyleString = (obj) =>
+  Object.entries(obj)
+    .filter(
+      ([_, v]) => (typeof v === "string" && v.trim()) || typeof v === "number",
+    )
+    .map(([k, v]) => {
+      if (k[0] !== "-" && k[1] !== "-") return `${kebab(k)}:${v}`;
+      return `${k}:${v}`;
+    })
+    .join(";");
 function defineScriptVars(vars) {
   let output = "";
   for (const [key, value] of Object.entries(vars)) {
     output += `const ${toIdent(key)} = ${JSON.stringify(value)?.replace(
       /<\/script>/g,
-      "\\x3C/script>"
+      "\\x3C/script>",
     )};
 `;
   }
@@ -1019,7 +1154,9 @@ function isCustomElement(tagName) {
 }
 function handleBooleanAttribute(key, value, shouldEscape, tagName) {
   if (tagName && isCustomElement(tagName)) {
-    return markHTMLString(` ${key}="${toAttributeString(value, shouldEscape)}"`);
+    return markHTMLString(
+      ` ${key}="${toAttributeString(value, shouldEscape)}"`,
+    );
   }
   return markHTMLString(value ? ` ${key}` : "");
 }
@@ -1043,11 +1180,13 @@ Make sure to use the static attribute syntax (\`${key}={value}\`) instead of the
   if (key === "style" && !(value instanceof HTMLString)) {
     if (Array.isArray(value) && value.length === 2) {
       return markHTMLString(
-        ` ${key}="${toAttributeString(`${toStyleString(value[0])};${value[1]}`, shouldEscape)}"`
+        ` ${key}="${toAttributeString(`${toStyleString(value[0])};${value[1]}`, shouldEscape)}"`,
       );
     }
     if (typeof value === "object") {
-      return markHTMLString(` ${key}="${toAttributeString(toStyleString(value), shouldEscape)}"`);
+      return markHTMLString(
+        ` ${key}="${toAttributeString(toStyleString(value), shouldEscape)}"`,
+      );
     }
   }
   if (key === "className") {
@@ -1077,8 +1216,17 @@ function internalSpreadAttributes(values, shouldEscape = true, tagName) {
   }
   return markHTMLString(output);
 }
-function renderElement$1(name, { props: _props, children = "" }, shouldEscape = true) {
-  const { lang: _, "data-astro-id": astroId, "define:vars": defineVars, ...props } = _props;
+function renderElement$1(
+  name,
+  { props: _props, children = "" },
+  shouldEscape = true,
+) {
+  const {
+    lang: _,
+    "data-astro-id": astroId,
+    "define:vars": defineVars,
+    ...props
+  } = _props;
   if (defineVars) {
     if (name === "style") {
       delete props["is:global"];
@@ -1094,8 +1242,7 @@ function renderElement$1(name, { props: _props, children = "" }, shouldEscape = 
   }
   return `<${name}${internalSpreadAttributes(props, shouldEscape, name)}>${children}</${name}>`;
 }
-const noop = () => {
-};
+const noop = () => {};
 class BufferedRenderer {
   chunks = [];
   renderPromise;
@@ -1133,7 +1280,9 @@ class BufferedRenderer {
 function createBufferedRenderer(destination, renderFunction) {
   return new BufferedRenderer(destination, renderFunction);
 }
-const isNode = typeof process !== "undefined" && Object.prototype.toString.call(process) === "[object process]";
+const isNode =
+  typeof process !== "undefined" &&
+  Object.prototype.toString.call(process) === "[object process]";
 const isDeno = typeof Deno !== "undefined";
 function promiseWithResolvers() {
   let resolve, reject;
@@ -1144,7 +1293,7 @@ function promiseWithResolvers() {
   return {
     promise,
     resolve,
-    reject
+    reject,
   };
 }
 const VALID_PROTOCOLS = ["http:", "https:"];
@@ -1160,7 +1309,12 @@ function isHttpUrl(url) {
 const uniqueElements = (item, index, all) => {
   const props = JSON.stringify(item.props);
   const children = item.children;
-  return index === all.findIndex((i) => JSON.stringify(i.props) === props && i.children == children);
+  return (
+    index ===
+    all.findIndex(
+      (i) => JSON.stringify(i.props) === props && i.children == children,
+    )
+  );
 };
 function renderAllHeadContent(result) {
   result._metadata.hasRenderedHead = true;
@@ -1171,24 +1325,35 @@ function renderAllHeadContent(result) {
       {
         props: {
           "http-equiv": "content-security-policy",
-          content: renderCspContent(result)
+          content: renderCspContent(result),
         },
-        children: ""
+        children: "",
       },
-      false
+      false,
     );
   }
-  const styles = Array.from(result.styles).filter(uniqueElements).map(
-    (style) => style.props.rel === "stylesheet" ? renderElement$1("link", style) : renderElement$1("style", style)
-  );
+  const styles = Array.from(result.styles)
+    .filter(uniqueElements)
+    .map((style) =>
+      style.props.rel === "stylesheet"
+        ? renderElement$1("link", style)
+        : renderElement$1("style", style),
+    );
   result.styles.clear();
-  const scripts = Array.from(result.scripts).filter(uniqueElements).map((script) => {
-    if (result.userAssetsBase) {
-      script.props.src = (result.base === "/" ? "" : result.base) + result.userAssetsBase + script.props.src;
-    }
-    return renderElement$1("script", script, false);
-  });
-  const links = Array.from(result.links).filter(uniqueElements).map((link) => renderElement$1("link", link, false));
+  const scripts = Array.from(result.scripts)
+    .filter(uniqueElements)
+    .map((script) => {
+      if (result.userAssetsBase) {
+        script.props.src =
+          (result.base === "/" ? "" : result.base) +
+          result.userAssetsBase +
+          script.props.src;
+      }
+      return renderElement$1("script", script, false);
+    });
+  const links = Array.from(result.links)
+    .filter(uniqueElements)
+    .map((link) => renderElement$1("link", link, false));
   content += styles.join("\n") + links.join("\n") + scripts.join("\n");
   if (result._metadata.extraHead.length > 0) {
     for (const part of result._metadata.extraHead) {
@@ -1207,7 +1372,7 @@ function maybeRenderHead() {
 const ALGORITHMS = {
   "SHA-256": "sha256-",
   "SHA-384": "sha384-",
-  "SHA-512": "sha512-"
+  "SHA-512": "sha512-",
 };
 const ALGORITHM_VALUES = Object.values(ALGORITHMS);
 z.enum(Object.keys(ALGORITHMS)).optional().default("SHA-256");
@@ -1240,7 +1405,7 @@ const ALLOWED_DIRECTIVES = [
   "sandbox",
   "trusted-types",
   "upgrade-insecure-requests",
-  "worker-src"
+  "worker-src",
 ];
 z.custom((value) => {
   if (typeof value !== "string") {
@@ -1256,7 +1421,7 @@ async function decodeKey(encoded) {
   const bytes = decodeBase64(encoded);
   return crypto.subtle.importKey("raw", bytes.buffer, ALGORITHM, true, [
     "encrypt",
-    "decrypt"
+    "decrypt",
   ]);
 }
 const encoder$1 = new TextEncoder();
@@ -1268,10 +1433,10 @@ async function encryptString(key, raw) {
   const buffer = await crypto.subtle.encrypt(
     {
       name: ALGORITHM,
-      iv
+      iv,
     },
     key,
-    data
+    data,
   );
   return encodeHexUpperCase(iv) + encodeBase64(new Uint8Array(buffer));
 }
@@ -1281,16 +1446,19 @@ async function decryptString(key, encoded) {
   const decryptedBuffer = await crypto.subtle.decrypt(
     {
       name: ALGORITHM,
-      iv
+      iv,
     },
     key,
-    dataArray
+    dataArray,
   );
   const decryptedString = decoder$1.decode(decryptedBuffer);
   return decryptedString;
 }
 async function generateCspDigest(data, algorithm) {
-  const hashBuffer = await crypto.subtle.digest(algorithm, encoder$1.encode(data));
+  const hashBuffer = await crypto.subtle.digest(
+    algorithm,
+    encoder$1.encode(data),
+  );
   const hash = encodeBase64(new Uint8Array(hashBuffer));
   return `${ALGORITHMS[algorithm]}${hash}`;
 }
@@ -1345,7 +1513,9 @@ class RenderTemplateResult {
   }
 }
 function isRenderTemplateResult(obj) {
-  return typeof obj === "object" && obj !== null && !!obj[renderTemplateResultSym];
+  return (
+    typeof obj === "object" && obj !== null && !!obj[renderTemplateResultSym]
+  );
 }
 function renderTemplate(htmlParts, ...expressions) {
   return new RenderTemplateResult(htmlParts, expressions);
@@ -1370,8 +1540,11 @@ function renderSlot(result, slotted, fallback) {
   }
   return {
     async render(destination) {
-      await renderChild(destination, typeof slotted === "function" ? slotted(result) : slotted);
-    }
+      await renderChild(
+        destination,
+        typeof slotted === "function" ? slotted(result) : slotted,
+      );
+    },
   };
 }
 async function renderSlotToString(result, slotted, fallback) {
@@ -1386,7 +1559,11 @@ async function renderSlotToString(result, slotted, fallback) {
           instructions.push(...chunk.instructions);
         }
       } else if (chunk instanceof Response) return;
-      else if (typeof chunk === "object" && "type" in chunk && typeof chunk.type === "string") {
+      else if (
+        typeof chunk === "object" &&
+        "type" in chunk &&
+        typeof chunk.type === "string"
+      ) {
         if (instructions === null) {
           instructions = [];
         }
@@ -1394,7 +1571,7 @@ async function renderSlotToString(result, slotted, fallback) {
       } else {
         content += chunkToString(result, chunk);
       }
-    }
+    },
   };
   const renderInstance = renderSlot(result, slotted, fallback);
   await renderInstance.render(temporaryDestination);
@@ -1405,8 +1582,8 @@ async function renderSlots(result, slots = {}) {
   let children = {};
   if (slots) {
     await Promise.all(
-      Object.entries(slots).map(
-        ([key, value]) => renderSlotToString(result, value).then((output) => {
+      Object.entries(slots).map(([key, value]) =>
+        renderSlotToString(result, value).then((output) => {
           if (output.instructions) {
             if (slotInstructions === null) {
               slotInstructions = [];
@@ -1414,14 +1591,14 @@ async function renderSlots(result, slots = {}) {
             slotInstructions.push(...output.instructions);
           }
           children[key] = output;
-        })
-      )
+        }),
+      ),
     );
   }
   return { slotInstructions, children };
 }
 function createSlotValueFromString(content) {
-  return function() {
+  return function () {
     return renderTemplate`${unescapeHTML(content)}`;
   };
 }
@@ -1430,7 +1607,7 @@ const internalProps = /* @__PURE__ */ new Set([
   "server:component-path",
   "server:component-export",
   "server:component-directive",
-  "server:defer"
+  "server:defer",
 ]);
 function containsServerDirective(props) {
   return "server:component-directive" in props;
@@ -1440,7 +1617,9 @@ const COMMENT_RE = /<!--/gu;
 const SCRIPT_REPLACER = "<\\/script";
 const COMMENT_REPLACER = "\\u003C!--";
 function safeJsonStringify(obj) {
-  return JSON.stringify(obj).replace(SCRIPT_RE, SCRIPT_REPLACER).replace(COMMENT_RE, COMMENT_REPLACER);
+  return JSON.stringify(obj)
+    .replace(SCRIPT_RE, SCRIPT_REPLACER)
+    .replace(COMMENT_RE, COMMENT_REPLACER);
 }
 function createSearchParams(componentExport, encryptedProps, slots) {
   const params = new URLSearchParams();
@@ -1474,9 +1653,15 @@ class ServerIslandComponent {
     const content = await this.getIslandContent();
     if (this.result.cspDestination) {
       this.result._metadata.extraScriptHashes.push(
-        await generateCspDigest(SERVER_ISLAND_REPLACER, this.result.cspAlgorithm)
+        await generateCspDigest(
+          SERVER_ISLAND_REPLACER,
+          this.result.cspAlgorithm,
+        ),
       );
-      const contentDigest = await generateCspDigest(content, this.result.cspAlgorithm);
+      const contentDigest = await generateCspDigest(
+        content,
+        this.result.cspAlgorithm,
+      );
       this.result._metadata.extraScriptHashes.push(contentDigest);
     }
     return createThinHead();
@@ -1484,7 +1669,9 @@ class ServerIslandComponent {
   async render(destination) {
     const hostId = await this.getHostId();
     const islandContent = await this.getIslandContent();
-    destination.write(createRenderInstruction({ type: "server-island-runtime" }));
+    destination.write(
+      createRenderInstruction({ type: "server-island-runtime" }),
+    );
     destination.write("<!--[if astro]>server-island-start<![endif]-->");
     for (const name in this.slots) {
       if (name === "fallback") {
@@ -1492,7 +1679,7 @@ class ServerIslandComponent {
       }
     }
     destination.write(
-      `<script type="module" data-astro-rerun data-island-id="${hostId}">${islandContent}</script>`
+      `<script type="module" data-astro-rerun data-island-id="${hostId}">${islandContent}</script>`,
     );
   }
   getComponentPath() {
@@ -1546,33 +1733,38 @@ class ServerIslandComponent {
       }
     }
     const key = await this.result.key;
-    const propsEncrypted = Object.keys(this.props).length === 0 ? "" : await encryptString(key, JSON.stringify(this.props));
+    const propsEncrypted =
+      Object.keys(this.props).length === 0
+        ? ""
+        : await encryptString(key, JSON.stringify(this.props));
     const hostId = await this.getHostId();
     const slash = this.result.base.endsWith("/") ? "" : "/";
     let serverIslandUrl = `${this.result.base}${slash}_server-islands/${componentId}${this.result.trailingSlash === "always" ? "/" : ""}`;
     const potentialSearchParams = createSearchParams(
       componentExport,
       propsEncrypted,
-      safeJsonStringify(renderedSlots)
+      safeJsonStringify(renderedSlots),
     );
-    const useGETRequest = isWithinURLLimit(serverIslandUrl, potentialSearchParams);
+    const useGETRequest = isWithinURLLimit(
+      serverIslandUrl,
+      potentialSearchParams,
+    );
     if (useGETRequest) {
       serverIslandUrl += "?" + potentialSearchParams.toString();
       this.result._metadata.extraHead.push(
         markHTMLString(
-          `<link rel="preload" as="fetch" href="${serverIslandUrl}" crossorigin="anonymous">`
-        )
+          `<link rel="preload" as="fetch" href="${serverIslandUrl}" crossorigin="anonymous">`,
+        ),
       );
     }
     const adapterHeaders = this.result.internalFetchHeaders || {};
     const headersJson = safeJsonStringify(adapterHeaders);
-    const method = useGETRequest ? (
-      // GET request
-      `const headers = new Headers(${headersJson});
+    const method = useGETRequest
+      ? // GET request
+        `const headers = new Headers(${headersJson});
 let response = await fetch('${serverIslandUrl}', { headers });`
-    ) : (
-      // POST request
-      `let data = {
+      : // POST request
+        `let data = {
 	componentExport: ${safeJsonStringify(componentExport)},
 	encryptedProps: ${safeJsonStringify(propsEncrypted)},
 	slots: ${safeJsonStringify(renderedSlots)},
@@ -1582,8 +1774,7 @@ let response = await fetch('${serverIslandUrl}', {
 	method: 'POST',
 	body: JSON.stringify(data),
 	headers,
-});`
-    );
+});`;
     this.islandContent = `${method}replaceServerIsland('${hostId}', response);`;
     return this.islandContent;
   }
@@ -1606,7 +1797,11 @@ const SERVER_ISLAND_REPLACER = markHTMLString(
 	s.before(document.createRange().createContextualFragment(html));
 	// Remove the script. Prior to v5.4.2, this was the trick to force rerun of scripts.  Keeping it to minimize change to the existing behavior.
 	s.remove();
-}`.split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("//")).join(" ")
+}`
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("//"))
+    .join(" "),
 );
 
 const Fragment = Symbol.for("astro:fragment");
@@ -1619,13 +1814,20 @@ function stringifyChunk(result, chunk) {
     switch (instruction.type) {
       case "directive": {
         const { hydration } = instruction;
-        let needsHydrationScript = hydration && determineIfNeedsHydrationScript(result);
-        let needsDirectiveScript = hydration && determinesIfNeedsDirectiveScript(result, hydration.directive);
+        let needsHydrationScript =
+          hydration && determineIfNeedsHydrationScript(result);
+        let needsDirectiveScript =
+          hydration &&
+          determinesIfNeedsDirectiveScript(result, hydration.directive);
         if (needsHydrationScript) {
           let prescripts = getPrescripts(result, "both", hydration.directive);
           return markHTMLString(prescripts);
         } else if (needsDirectiveScript) {
-          let prescripts = getPrescripts(result, "directive", hydration.directive);
+          let prescripts = getPrescripts(
+            result,
+            "directive",
+            hydration.directive,
+          );
           return markHTMLString(prescripts);
         } else {
           return "";
@@ -1638,7 +1840,11 @@ function stringifyChunk(result, chunk) {
         return renderAllHeadContent(result);
       }
       case "maybe-head": {
-        if (result._metadata.hasRenderedHead || result._metadata.headInTree || result.partial) {
+        if (
+          result._metadata.hasRenderedHead ||
+          result._metadata.headInTree ||
+          result.partial
+        ) {
           return "";
         }
         return renderAllHeadContent(result);
@@ -1694,7 +1900,12 @@ function chunkToByteArray(result, chunk) {
   }
 }
 function isRenderInstance(obj) {
-  return !!obj && typeof obj === "object" && "render" in obj && typeof obj.render === "function";
+  return (
+    !!obj &&
+    typeof obj === "object" &&
+    "render" in obj &&
+    typeof obj.render === "function"
+  );
 }
 
 function renderChild(destination, child) {
@@ -1735,7 +1946,10 @@ function renderChild(destination, child) {
     destination.write(child);
     return;
   }
-  if (typeof child === "object" && (Symbol.asyncIterator in child || Symbol.iterator in child)) {
+  if (
+    typeof child === "object" &&
+    (Symbol.asyncIterator in child || Symbol.iterator in child)
+  ) {
     if (Symbol.asyncIterator in child) {
       return renderAsyncIterable(destination, child);
     }
@@ -1751,7 +1965,7 @@ function renderArray(destination, children) {
   });
   const iterator = flushers[Symbol.iterator]();
   const iterate = () => {
-    for (; ; ) {
+    for (;;) {
       const { value: flusher, done } = iterator.next();
       if (done) {
         break;
@@ -1767,7 +1981,7 @@ function renderArray(destination, children) {
 function renderIterable(destination, children) {
   const iterator = children[Symbol.iterator]();
   const iterate = () => {
-    for (; ; ) {
+    for (;;) {
       const { value, done } = iterator.next();
       if (done) {
         break;
@@ -1817,10 +2031,11 @@ class AstroComponentInstance {
     }
     this.returnValue = this.factory(result, this.props, this.slotValues);
     if (isPromise(this.returnValue)) {
-      this.returnValue.then((resolved) => {
-        this.returnValue = resolved;
-      }).catch(() => {
-      });
+      this.returnValue
+        .then((resolved) => {
+          this.returnValue = resolved;
+        })
+        .catch(() => {});
     }
     return this.returnValue;
   }
@@ -1841,17 +2056,25 @@ class AstroComponentInstance {
 }
 function validateComponentProps(props, clientDirectives, displayName) {
   if (props != null) {
-    const directives = [...clientDirectives.keys()].map((directive) => `client:${directive}`);
+    const directives = [...clientDirectives.keys()].map(
+      (directive) => `client:${directive}`,
+    );
     for (const prop of Object.keys(props)) {
       if (directives.includes(prop)) {
         console.warn(
-          `You are attempting to render <${displayName} ${prop} />, but ${displayName} is an Astro component. Astro components do not render in the client and should not have a hydration directive. Please use a framework component for client rendering.`
+          `You are attempting to render <${displayName} ${prop} />, but ${displayName} is an Astro component. Astro components do not render in the client and should not have a hydration directive. Please use a framework component for client rendering.`,
         );
       }
     }
   }
 }
-function createAstroComponentInstance(result, displayName, factory, props, slots = {}) {
+function createAstroComponentInstance(
+  result,
+  displayName,
+  factory,
+  props,
+  slots = {},
+) {
   validateComponentProps(props, result.clientDirectives, displayName);
   const instance = new AstroComponentInstance(result, props, slots, factory);
   if (isAPropagatingComponent(result, factory)) {
@@ -1860,17 +2083,26 @@ function createAstroComponentInstance(result, displayName, factory, props, slots
   return instance;
 }
 function isAstroComponentInstance(obj) {
-  return typeof obj === "object" && obj !== null && !!obj[astroComponentInstanceSym];
+  return (
+    typeof obj === "object" && obj !== null && !!obj[astroComponentInstanceSym]
+  );
 }
 
 const DOCTYPE_EXP = /<!doctype html/i;
-async function renderToString(result, componentFactory, props, children, isPage = false, route) {
+async function renderToString(
+  result,
+  componentFactory,
+  props,
+  children,
+  isPage = false,
+  route,
+) {
   const templateResult = await callComponentAsTemplateResultOrResponse(
     result,
     componentFactory,
     props,
     children,
-    route
+    route,
   );
   if (templateResult instanceof Response) return templateResult;
   let str = "";
@@ -1883,24 +2115,33 @@ async function renderToString(result, componentFactory, props, children, isPage 
       if (isPage && !renderedFirstPageChunk) {
         renderedFirstPageChunk = true;
         if (!result.partial && !DOCTYPE_EXP.test(String(chunk))) {
-          const doctype = result.compressHTML ? "<!DOCTYPE html>" : "<!DOCTYPE html>\n";
+          const doctype = result.compressHTML
+            ? "<!DOCTYPE html>"
+            : "<!DOCTYPE html>\n";
           str += doctype;
         }
       }
       if (chunk instanceof Response) return;
       str += chunkToString(result, chunk);
-    }
+    },
   };
   await templateResult.render(destination);
   return str;
 }
-async function renderToReadableStream(result, componentFactory, props, children, isPage = false, route) {
+async function renderToReadableStream(
+  result,
+  componentFactory,
+  props,
+  children,
+  isPage = false,
+  route,
+) {
   const templateResult = await callComponentAsTemplateResultOrResponse(
     result,
     componentFactory,
     props,
     children,
-    route
+    route,
   );
   if (templateResult instanceof Response) return templateResult;
   let renderedFirstPageChunk = false;
@@ -1914,18 +2155,20 @@ async function renderToReadableStream(result, componentFactory, props, children,
           if (isPage && !renderedFirstPageChunk) {
             renderedFirstPageChunk = true;
             if (!result.partial && !DOCTYPE_EXP.test(String(chunk))) {
-              const doctype = result.compressHTML ? "<!DOCTYPE html>" : "<!DOCTYPE html>\n";
+              const doctype = result.compressHTML
+                ? "<!DOCTYPE html>"
+                : "<!DOCTYPE html>\n";
               controller.enqueue(encoder.encode(doctype));
             }
           }
           if (chunk instanceof Response) {
             throw new AstroError({
-              ...ResponseSentError
+              ...ResponseSentError,
             });
           }
           const bytes = chunkToByteArray(result, chunk);
           controller.enqueue(bytes);
-        }
+        },
       };
       (async () => {
         try {
@@ -1934,7 +2177,7 @@ async function renderToReadableStream(result, componentFactory, props, children,
         } catch (e) {
           if (AstroError.is(e) && !e.loc) {
             e.setLocation({
-              file: route?.component
+              file: route?.component,
             });
           }
           setTimeout(() => controller.error(e), 0);
@@ -1943,10 +2186,16 @@ async function renderToReadableStream(result, componentFactory, props, children,
     },
     cancel() {
       result.cancelled = true;
-    }
+    },
   });
 }
-async function callComponentAsTemplateResultOrResponse(result, componentFactory, props, children, route) {
+async function callComponentAsTemplateResultOrResponse(
+  result,
+  componentFactory,
+  props,
+  children,
+  route,
+) {
   const factoryResult = await componentFactory(result, props, children);
   if (factoryResult instanceof Response) {
     return factoryResult;
@@ -1956,21 +2205,24 @@ async function callComponentAsTemplateResultOrResponse(result, componentFactory,
         ...OnlyResponseCanBeReturned,
         message: OnlyResponseCanBeReturned.message(
           route?.route,
-          typeof factoryResult
+          typeof factoryResult,
         ),
         location: {
-          file: route?.component
-        }
+          file: route?.component,
+        },
       });
     }
     return factoryResult.content;
   } else if (!isRenderTemplateResult(factoryResult)) {
     throw new AstroError({
       ...OnlyResponseCanBeReturned,
-      message: OnlyResponseCanBeReturned.message(route?.route, typeof factoryResult),
+      message: OnlyResponseCanBeReturned.message(
+        route?.route,
+        typeof factoryResult,
+      ),
       location: {
-        file: route?.component
-      }
+        file: route?.component,
+      },
     });
   }
   return factoryResult;
@@ -1988,13 +2240,20 @@ async function bufferHeadContent(result) {
     }
   }
 }
-async function renderToAsyncIterable(result, componentFactory, props, children, isPage = false, route) {
+async function renderToAsyncIterable(
+  result,
+  componentFactory,
+  props,
+  children,
+  isPage = false,
+  route,
+) {
   const templateResult = await callComponentAsTemplateResultOrResponse(
     result,
     componentFactory,
     props,
     children,
-    route
+    route,
   );
   if (templateResult instanceof Response) return templateResult;
   let renderedFirstPageChunk = false;
@@ -2036,21 +2295,23 @@ async function renderToAsyncIterable(result, componentFactory, props, children, 
         // The iterator is done when rendering has finished
         // and there are no more chunks to return.
         done: length === 0 && renderingComplete,
-        value: mergedArray
+        value: mergedArray,
       };
       return returnValue;
     },
     async return() {
       result.cancelled = true;
       return { done: true, value: void 0 };
-    }
+    },
   };
   const destination = {
     write(chunk) {
       if (isPage && !renderedFirstPageChunk) {
         renderedFirstPageChunk = true;
         if (!result.partial && !DOCTYPE_EXP.test(String(chunk))) {
-          const doctype = result.compressHTML ? "<!DOCTYPE html>" : "<!DOCTYPE html>\n";
+          const doctype = result.compressHTML
+            ? "<!DOCTYPE html>"
+            : "<!DOCTYPE html>\n";
           buffer.push(encoder.encode(doctype));
         }
       }
@@ -2064,19 +2325,21 @@ async function renderToAsyncIterable(result, componentFactory, props, children, 
       } else if (buffer.length > 0) {
         next?.resolve();
       }
-    }
+    },
   };
   const renderResult = toPromise(() => templateResult.render(destination));
-  renderResult.catch((err) => {
-    error = err;
-  }).finally(() => {
-    renderingComplete = true;
-    next?.resolve();
-  });
+  renderResult
+    .catch((err) => {
+      error = err;
+    })
+    .finally(() => {
+      renderingComplete = true;
+      next?.resolve();
+    });
   return {
     [Symbol.asyncIterator]() {
       return iterator;
-    }
+    },
   };
 }
 function toPromise(fn) {
@@ -2089,7 +2352,9 @@ function toPromise(fn) {
 }
 
 function componentIsHTMLElement(Component) {
-  return typeof HTMLElement !== "undefined" && HTMLElement.isPrototypeOf(Component);
+  return (
+    typeof HTMLElement !== "undefined" && HTMLElement.isPrototypeOf(Component)
+  );
 }
 async function renderHTMLElement(result, constructor, props, slots) {
   const name = getHTMLElementName(constructor);
@@ -2098,19 +2363,29 @@ async function renderHTMLElement(result, constructor, props, slots) {
     attrHTML += ` ${attr}="${toAttributeString(await props[attr])}"`;
   }
   return markHTMLString(
-    `<${name}${attrHTML}>${await renderSlotToString(result, slots?.default)}</${name}>`
+    `<${name}${attrHTML}>${await renderSlotToString(result, slots?.default)}</${name}>`,
   );
 }
 function getHTMLElementName(constructor) {
   const definedName = customElements.getName(constructor);
   if (definedName) return definedName;
-  const assignedName = constructor.name.replace(/^HTML|Element$/g, "").replace(/[A-Z]/g, "-$&").toLowerCase().replace(/^-/, "html-");
+  const assignedName = constructor.name
+    .replace(/^HTML|Element$/g, "")
+    .replace(/[A-Z]/g, "-$&")
+    .toLowerCase()
+    .replace(/^-/, "html-");
   return assignedName;
 }
 
 const needsHeadRenderingSymbol = Symbol.for("astro.needsHeadRendering");
 const rendererAliases = /* @__PURE__ */ new Map([["solid", "solid-js"]]);
-const clientOnlyValues = /* @__PURE__ */ new Set(["solid-js", "react", "preact", "vue", "svelte"]);
+const clientOnlyValues = /* @__PURE__ */ new Set([
+  "solid-js",
+  "react",
+  "preact",
+  "vue",
+  "svelte",
+]);
 function guessRenderers(componentUrl) {
   const extname = componentUrl?.split(".").pop();
   switch (extname) {
@@ -2120,7 +2395,12 @@ function guessRenderers(componentUrl) {
       return ["@astrojs/vue"];
     case "jsx":
     case "tsx":
-      return ["@astrojs/react", "@astrojs/preact", "@astrojs/solid-js", "@astrojs/vue (jsx)"];
+      return [
+        "@astrojs/react",
+        "@astrojs/preact",
+        "@astrojs/solid-js",
+        "@astrojs/vue (jsx)",
+      ];
     case void 0:
     default:
       return [
@@ -2128,7 +2408,7 @@ function guessRenderers(componentUrl) {
         "@astrojs/preact",
         "@astrojs/solid-js",
         "@astrojs/vue",
-        "@astrojs/svelte"
+        "@astrojs/svelte",
       ];
   }
 }
@@ -2144,22 +2424,26 @@ function removeStaticAstroSlot(html, supportsAstroStaticSlot = true) {
   const exp = supportsAstroStaticSlot ? ASTRO_STATIC_SLOT_EXP : ASTRO_SLOT_EXP;
   return html.replace(exp, "");
 }
-async function renderFrameworkComponent(result, displayName, Component, _props, slots = {}) {
+async function renderFrameworkComponent(
+  result,
+  displayName,
+  Component,
+  _props,
+  slots = {},
+) {
   if (!Component && "client:only" in _props === false) {
     throw new Error(
       `Unable to render ${displayName} because it is ${Component}!
-Did you forget to import the component or is it possible there is a typo?`
+Did you forget to import the component or is it possible there is a typo?`,
     );
   }
   const { renderers, clientDirectives } = result;
   const metadata = {
     astroStaticSlot: true,
-    displayName
+    displayName,
   };
-  const { hydration, isPage, props, propsWithoutTransitionAttributes } = extractDirectives(
-    _props,
-    clientDirectives
-  );
+  const { hydration, isPage, props, propsWithoutTransitionAttributes } =
+    extractDirectives(_props, clientDirectives);
   let html = "";
   let attrs = void 0;
   if (hydration) {
@@ -2176,8 +2460,7 @@ Did you forget to import the component or is it possible there is a typo?`
     let isTagged = false;
     try {
       isTagged = Component && Component[Renderer];
-    } catch {
-    }
+    } catch {}
     if (isTagged) {
       const rendererName = Component[Renderer];
       renderer = renderers.find(({ name }) => name === rendererName);
@@ -2198,25 +2481,27 @@ Did you forget to import the component or is it possible there is a typo?`
         throw error;
       }
     }
-    if (!renderer && typeof HTMLElement === "function" && componentIsHTMLElement(Component)) {
-      const output = await renderHTMLElement(
-        result,
-        Component,
-        _props,
-        slots
-      );
+    if (
+      !renderer &&
+      typeof HTMLElement === "function" &&
+      componentIsHTMLElement(Component)
+    ) {
+      const output = await renderHTMLElement(result, Component, _props, slots);
       return {
         render(destination) {
           destination.write(output);
-        }
+        },
       };
     }
   } else {
     if (metadata.hydrateArgs) {
-      const rendererName = rendererAliases.has(metadata.hydrateArgs) ? rendererAliases.get(metadata.hydrateArgs) : metadata.hydrateArgs;
+      const rendererName = rendererAliases.has(metadata.hydrateArgs)
+        ? rendererAliases.get(metadata.hydrateArgs)
+        : metadata.hydrateArgs;
       if (clientOnlyValues.has(rendererName)) {
         renderer = renderers.find(
-          ({ name }) => name === `@astrojs/${rendererName}` || name === rendererName
+          ({ name }) =>
+            name === `@astrojs/${rendererName}` || name === rendererName,
         );
       }
     }
@@ -2225,13 +2510,17 @@ Did you forget to import the component or is it possible there is a typo?`
     }
     if (!renderer) {
       const extname = metadata.componentUrl?.split(".").pop();
-      renderer = renderers.find(({ name }) => name === `@astrojs/${extname}` || name === extname);
+      renderer = renderers.find(
+        ({ name }) => name === `@astrojs/${extname}` || name === extname,
+      );
     }
   }
   let componentServerRenderEndTime;
   if (!renderer) {
     if (metadata.hydrate === "only") {
-      const rendererName = rendererAliases.has(metadata.hydrateArgs) ? rendererAliases.get(metadata.hydrateArgs) : metadata.hydrateArgs;
+      const rendererName = rendererAliases.has(metadata.hydrateArgs)
+        ? rendererAliases.get(metadata.hydrateArgs)
+        : metadata.hydrateArgs;
       if (clientOnlyValues.has(rendererName)) {
         const plural = validRenderers.length > 1;
         throw new AstroError({
@@ -2240,24 +2529,26 @@ Did you forget to import the component or is it possible there is a typo?`
             metadata.displayName,
             metadata?.componentUrl?.split(".").pop(),
             plural,
-            validRenderers.length
+            validRenderers.length,
           ),
           hint: NoMatchingRenderer.hint(
-            formatList(probableRendererNames.map((r) => "`" + r + "`"))
-          )
+            formatList(probableRendererNames.map((r) => "`" + r + "`")),
+          ),
         });
       } else {
         throw new AstroError({
           ...NoClientOnlyHint,
           message: NoClientOnlyHint.message(metadata.displayName),
           hint: NoClientOnlyHint.hint(
-            probableRendererNames.map((r) => r.replace("@astrojs/", "")).join("|")
-          )
+            probableRendererNames
+              .map((r) => r.replace("@astrojs/", ""))
+              .join("|"),
+          ),
         });
       }
     } else if (typeof Component !== "string") {
-      const matchingRenderers = validRenderers.filter(
-        (r) => probableRendererNames.includes(r.name)
+      const matchingRenderers = validRenderers.filter((r) =>
+        probableRendererNames.includes(r.name),
       );
       const plural = validRenderers.length > 1;
       if (matchingRenderers.length === 0) {
@@ -2267,11 +2558,11 @@ Did you forget to import the component or is it possible there is a typo?`
             metadata.displayName,
             metadata?.componentUrl?.split(".").pop(),
             plural,
-            validRenderers.length
+            validRenderers.length,
           ),
           hint: NoMatchingRenderer.hint(
-            formatList(probableRendererNames.map((r) => "`" + r + "`"))
-          )
+            formatList(probableRendererNames.map((r) => "`" + r + "`")),
+          ),
         });
       } else if (matchingRenderers.length === 1) {
         renderer = matchingRenderers[0];
@@ -2280,7 +2571,7 @@ Did you forget to import the component or is it possible there is a typo?`
           Component,
           propsWithoutTransitionAttributes,
           children,
-          metadata
+          metadata,
         ));
       } else {
         throw new Error(`Unable to render ${metadata.displayName}!
@@ -2306,10 +2597,11 @@ If you're still stuck, please open an issue on GitHub or join us at https://astr
         Component,
         propsWithoutTransitionAttributes,
         children,
-        metadata
+        metadata,
       ));
       if (process.env.NODE_ENV === "development")
-        componentServerRenderEndTime = performance.now() - componentRenderStartTime;
+        componentServerRenderEndTime =
+          performance.now() - componentRenderStartTime;
     }
   }
   if (!html && typeof Component === "string") {
@@ -2318,16 +2610,18 @@ If you're still stuck, please open an issue on GitHub or join us at https://astr
     const renderTemplateResult = renderTemplate`<${Tag}${internalSpreadAttributes(
       props,
       true,
-      Tag
+      Tag,
     )}${markHTMLString(
-      childSlots === "" && voidElementNames.test(Tag) ? `/>` : `>${childSlots}</${Tag}>`
+      childSlots === "" && voidElementNames.test(Tag)
+        ? `/>`
+        : `>${childSlots}</${Tag}>`,
     )}`;
     html = "";
     const destination = {
       write(chunk) {
         if (chunk instanceof Response) return;
         html += chunkToString(result, chunk);
-      }
+      },
     };
     await renderTemplateResult.render(destination);
   }
@@ -2343,23 +2637,25 @@ If you're still stuck, please open an issue on GitHub or join us at https://astr
           destination.write(html);
         } else if (html && html.length > 0) {
           destination.write(
-            markHTMLString(removeStaticAstroSlot(html, renderer?.ssr?.supportsAstroStaticSlot))
+            markHTMLString(
+              removeStaticAstroSlot(
+                html,
+                renderer?.ssr?.supportsAstroStaticSlot,
+              ),
+            ),
           );
         }
-      }
+      },
     };
   }
   const astroId = shorthash(
     `<!--${metadata.componentExport.value}:${metadata.componentUrl}-->
 ${html}
-${serializeProps(
-      props,
-      metadata
-    )}`
+${serializeProps(props, metadata)}`,
   );
   const island = await generateHydrateScript(
     { renderer, result, astroId, props, attrs },
-    metadata
+    metadata,
   );
   if (componentServerRenderEndTime && process.env.NODE_ENV === "development")
     island.props["server-render-time"] = componentServerRenderEndTime;
@@ -2367,8 +2663,13 @@ ${serializeProps(
   if (html) {
     if (Object.keys(children).length > 0) {
       for (const key of Object.keys(children)) {
-        let tagName = renderer?.ssr?.supportsAstroStaticSlot ? !!metadata.hydrate ? "astro-slot" : "astro-static-slot" : "astro-slot";
-        let expectedHTML = key === "default" ? `<${tagName}>` : `<${tagName} name="${key}">`;
+        let tagName = renderer?.ssr?.supportsAstroStaticSlot
+          ? !!metadata.hydrate
+            ? "astro-slot"
+            : "astro-static-slot"
+          : "astro-slot";
+        let expectedHTML =
+          key === "default" ? `<${tagName}>` : `<${tagName} name="${key}">`;
         if (!html.includes(expectedHTML)) {
           unrenderedSlots.push(key);
         }
@@ -2377,9 +2678,15 @@ ${serializeProps(
   } else {
     unrenderedSlots = Object.keys(children);
   }
-  const template = unrenderedSlots.length > 0 ? unrenderedSlots.map(
-    (key) => `<template data-astro-template${key !== "default" ? `="${key}"` : ""}>${children[key]}</template>`
-  ).join("") : "";
+  const template =
+    unrenderedSlots.length > 0
+      ? unrenderedSlots
+          .map(
+            (key) =>
+              `<template data-astro-template${key !== "default" ? `="${key}"` : ""}>${children[key]}</template>`,
+          )
+          .join("")
+      : "";
   island.children = `${html ?? ""}${template}`;
   if (island.children) {
     island.props["await-children"] = "";
@@ -2392,19 +2699,24 @@ ${serializeProps(
           destination.write(instruction);
         }
       }
-      destination.write(createRenderInstruction({ type: "directive", hydration }));
-      if (hydration.directive !== "only" && renderer?.ssr.renderHydrationScript) {
+      destination.write(
+        createRenderInstruction({ type: "directive", hydration }),
+      );
+      if (
+        hydration.directive !== "only" &&
+        renderer?.ssr.renderHydrationScript
+      ) {
         destination.write(
           createRenderInstruction({
             type: "renderer-hydration-script",
             rendererName: renderer.name,
-            render: renderer.ssr.renderHydrationScript
-          })
+            render: renderer.ssr.renderHydrationScript,
+          }),
         );
       }
       const renderedElement = renderElement$1("astro-island", island, false);
       destination.write(markHTMLString(renderedElement));
-    }
+    },
   };
 }
 function sanitizeElementName(tag) {
@@ -2418,30 +2730,49 @@ async function renderFragmentComponent(result, slots = {}) {
     render(destination) {
       if (children == null) return;
       destination.write(children);
-    }
+    },
   };
 }
 async function renderHTMLComponent(result, Component, _props, slots = {}) {
   const { slotInstructions, children } = await renderSlots(result, slots);
   const html = Component({ slots: children });
-  const hydrationHtml = slotInstructions ? slotInstructions.map((instr) => chunkToString(result, instr)).join("") : "";
+  const hydrationHtml = slotInstructions
+    ? slotInstructions.map((instr) => chunkToString(result, instr)).join("")
+    : "";
   return {
     render(destination) {
       destination.write(markHTMLString(hydrationHtml + html));
-    }
+    },
   };
 }
-function renderAstroComponent(result, displayName, Component, props, slots = {}) {
+function renderAstroComponent(
+  result,
+  displayName,
+  Component,
+  props,
+  slots = {},
+) {
   if (containsServerDirective(props)) {
-    const serverIslandComponent = new ServerIslandComponent(result, props, slots, displayName);
+    const serverIslandComponent = new ServerIslandComponent(
+      result,
+      props,
+      slots,
+      displayName,
+    );
     result._metadata.propagators.add(serverIslandComponent);
     return serverIslandComponent;
   }
-  const instance = createAstroComponentInstance(result, displayName, Component, props, slots);
+  const instance = createAstroComponentInstance(
+    result,
+    displayName,
+    Component,
+    props,
+    slots,
+  );
   return {
     render(destination) {
       return instance.render(destination);
-    }
+    },
   };
 }
 function renderComponent(result, displayName, Component, props, slots = {}) {
@@ -2455,19 +2786,24 @@ function renderComponent(result, displayName, Component, props, slots = {}) {
   }
   props = normalizeProps(props);
   if (isHTMLComponent(Component)) {
-    return renderHTMLComponent(result, Component, props, slots).catch(handleCancellation);
+    return renderHTMLComponent(result, Component, props, slots).catch(
+      handleCancellation,
+    );
   }
   if (isAstroComponentFactory(Component)) {
     return renderAstroComponent(result, displayName, Component, props, slots);
   }
-  return renderFrameworkComponent(result, displayName, Component, props, slots).catch(
-    handleCancellation
-  );
+  return renderFrameworkComponent(
+    result,
+    displayName,
+    Component,
+    props,
+    slots,
+  ).catch(handleCancellation);
   function handleCancellation(e) {
     if (result.cancelled)
       return {
-        render() {
-        }
+        render() {},
       };
     throw e;
   }
@@ -2483,7 +2819,15 @@ function normalizeProps(props) {
   }
   return props;
 }
-async function renderComponentToString(result, displayName, Component, props, slots = {}, isPage = false, route) {
+async function renderComponentToString(
+  result,
+  displayName,
+  Component,
+  props,
+  slots = {},
+  isPage = false,
+  route,
+) {
   let str = "";
   let renderedFirstPageChunk = false;
   let head = "";
@@ -2496,15 +2840,23 @@ async function renderComponentToString(result, displayName, Component, props, sl
         if (isPage && !result.partial && !renderedFirstPageChunk) {
           renderedFirstPageChunk = true;
           if (!/<!doctype html/i.test(String(chunk))) {
-            const doctype = result.compressHTML ? "<!DOCTYPE html>" : "<!DOCTYPE html>\n";
+            const doctype = result.compressHTML
+              ? "<!DOCTYPE html>"
+              : "<!DOCTYPE html>\n";
             str += doctype + head;
           }
         }
         if (chunk instanceof Response) return;
         str += chunkToString(result, chunk);
-      }
+      },
     };
-    const renderInstance = await renderComponent(result, displayName, Component, props, slots);
+    const renderInstance = await renderComponent(
+      result,
+      displayName,
+      Component,
+      props,
+      slots,
+    );
     if (containsServerDirective(props)) {
       await bufferHeadContent(result);
     }
@@ -2512,7 +2864,7 @@ async function renderComponentToString(result, displayName, Component, props, sl
   } catch (e) {
     if (AstroError.is(e) && !e.loc) {
       e.setLocation({
-        file: route?.component
+        file: route?.component,
       });
     }
     throw e;
@@ -2536,11 +2888,11 @@ async function renderJSX(result, vnode) {
       return markHTMLString(escapeHTML(vnode));
     case typeof vnode === "function":
       return vnode;
-    case (!vnode && vnode !== 0):
+    case !vnode && vnode !== 0:
       return "";
     case Array.isArray(vnode):
       return markHTMLString(
-        (await Promise.all(vnode.map((v) => renderJSX(result, v)))).join("")
+        (await Promise.all(vnode.map((v) => renderJSX(result, v)))).join(""),
       );
   }
   return renderJSXVNode(result, vnode);
@@ -2558,8 +2910,12 @@ Did you forget to import the component or is it possible there is a typo?`);
         let props = {};
         let slots = {};
         for (const [key, value] of Object.entries(vnode.props ?? {})) {
-          if (key === "children" || value && typeof value === "object" && value["$$slot"]) {
-            slots[key === "children" ? "default" : key] = () => renderJSX(result, value);
+          if (
+            key === "children" ||
+            (value && typeof value === "object" && value["$$slot"])
+          ) {
+            slots[key === "children" ? "default" : key] = () =>
+              renderJSX(result, value);
           } else {
             props[key] = value;
           }
@@ -2569,18 +2925,21 @@ Did you forget to import the component or is it possible there is a typo?`);
           vnode.type.name,
           vnode.type,
           props,
-          slots
+          slots,
         );
         const html = markHTMLString(str);
         return html;
       }
-      case (!vnode.type && vnode.type !== 0):
+      case !vnode.type && vnode.type !== 0:
         return "";
-      case (typeof vnode.type === "string" && vnode.type !== ClientOnlyPlaceholder):
-        return markHTMLString(await renderElement(result, vnode.type, vnode.props ?? {}));
+      case typeof vnode.type === "string" &&
+        vnode.type !== ClientOnlyPlaceholder:
+        return markHTMLString(
+          await renderElement(result, vnode.type, vnode.props ?? {}),
+        );
     }
     if (vnode.type) {
-      let extractSlots2 = function(child) {
+      let extractSlots2 = function (child) {
         if (Array.isArray(child)) {
           return child.map((c) => extractSlots2(c));
         }
@@ -2589,7 +2948,10 @@ Did you forget to import the component or is it possible there is a typo?`);
           return;
         }
         if ("slot" in child.props) {
-          _slots[child.props.slot] = [..._slots[child.props.slot] ?? [], child];
+          _slots[child.props.slot] = [
+            ...(_slots[child.props.slot] ?? []),
+            child,
+          ];
           delete child.props.slot;
           return;
         }
@@ -2614,7 +2976,7 @@ Did you forget to import the component or is it possible there is a typo?`);
       }
       const { children = null, ...props } = vnode.props ?? {};
       const _slots = {
-        default: []
+        default: [],
       };
       extractSlots2(children);
       for (const [key, value] of Object.entries(props)) {
@@ -2630,7 +2992,7 @@ Did you forget to import the component or is it possible there is a typo?`);
           renderJSX(result, value).then((output2) => {
             if (output2.toString().trim().length === 0) return;
             slots[key] = () => output2;
-          })
+          }),
         );
       }
       await Promise.all(slotPromises);
@@ -2641,7 +3003,7 @@ Did you forget to import the component or is it possible there is a typo?`);
           vnode.props["client:display-name"] ?? "",
           null,
           props,
-          slots
+          slots,
         );
       } else {
         output = await renderComponentToString(
@@ -2649,7 +3011,7 @@ Did you forget to import the component or is it possible there is a typo?`);
           typeof vnode.type === "function" ? vnode.type.name : vnode.type,
           vnode.type,
           props,
-          slots
+          slots,
         );
       }
       return markHTMLString(output);
@@ -2660,8 +3022,10 @@ Did you forget to import the component or is it possible there is a typo?`);
 async function renderElement(result, tag, { children, ...props }) {
   return markHTMLString(
     `<${tag}${spreadAttributes(props)}${markHTMLString(
-      (children == null || children == "") && voidElementNames.test(tag) ? `/>` : `>${children == null ? "" : await renderJSX(result, prerenderElementChildren(tag, children))}</${tag}>`
-    )}`
+      (children == null || children == "") && voidElementNames.test(tag)
+        ? `/>`
+        : `>${children == null ? "" : await renderJSX(result, prerenderElementChildren(tag, children))}</${tag}>`,
+    )}`,
   );
 }
 function prerenderElementChildren(tag, children) {
@@ -2672,10 +3036,19 @@ function prerenderElementChildren(tag, children) {
   }
 }
 
-async function renderPage(result, componentFactory, props, children, streaming, route) {
+async function renderPage(
+  result,
+  componentFactory,
+  props,
+  children,
+  streaming,
+  route,
+) {
   if (!isAstroComponentFactory(componentFactory)) {
-    result._metadata.headInTree = result.componentMetadata.get(componentFactory.moduleId)?.containsHead ?? false;
-    const pageProps = { ...props ?? {}, "server:root": true };
+    result._metadata.headInTree =
+      result.componentMetadata.get(componentFactory.moduleId)?.containsHead ??
+      false;
+    const pageProps = { ...(props ?? {}), "server:root": true };
     const str = await renderComponentToString(
       result,
       componentFactory.name,
@@ -2683,21 +3056,27 @@ async function renderPage(result, componentFactory, props, children, streaming, 
       pageProps,
       {},
       true,
-      route
+      route,
     );
     const bytes = encoder.encode(str);
     const headers2 = new Headers([
       ["Content-Type", "text/html"],
-      ["Content-Length", bytes.byteLength.toString()]
+      ["Content-Length", bytes.byteLength.toString()],
     ]);
-    if (result.shouldInjectCspMetaTags && (result.cspDestination === "header" || result.cspDestination === "adapter")) {
+    if (
+      result.shouldInjectCspMetaTags &&
+      (result.cspDestination === "header" ||
+        result.cspDestination === "adapter")
+    ) {
       headers2.set("content-security-policy", renderCspContent(result));
     }
     return new Response(bytes, {
-      headers: headers2
+      headers: headers2,
     });
   }
-  result._metadata.headInTree = result.componentMetadata.get(componentFactory.moduleId)?.containsHead ?? false;
+  result._metadata.headInTree =
+    result.componentMetadata.get(componentFactory.moduleId)?.containsHead ??
+    false;
   let body;
   if (streaming) {
     if (isNode && !isDeno) {
@@ -2707,19 +3086,36 @@ async function renderPage(result, componentFactory, props, children, streaming, 
         props,
         children,
         true,
-        route
+        route,
       );
       body = nodeBody;
     } else {
-      body = await renderToReadableStream(result, componentFactory, props, children, true, route);
+      body = await renderToReadableStream(
+        result,
+        componentFactory,
+        props,
+        children,
+        true,
+        route,
+      );
     }
   } else {
-    body = await renderToString(result, componentFactory, props, children, true, route);
+    body = await renderToString(
+      result,
+      componentFactory,
+      props,
+      children,
+      true,
+      route,
+    );
   }
   if (body instanceof Response) return body;
   const init = result.response;
   const headers = new Headers(init.headers);
-  if (result.shouldInjectCspMetaTags && result.cspDestination === "header" || result.cspDestination === "adapter") {
+  if (
+    (result.shouldInjectCspMetaTags && result.cspDestination === "header") ||
+    result.cspDestination === "adapter"
+  ) {
     headers.set("content-security-policy", renderCspContent(result));
   }
   if (!streaming && typeof body === "string") {
@@ -2759,12 +3155,14 @@ async function renderScript(result, id) {
   }
   const resolved = await result.resolve(id);
   return markHTMLString(
-    `<script type="module" src="${result.userAssetsBase ? (result.base === "/" ? "" : result.base) + result.userAssetsBase : ""}${resolved}"></script>`
+    `<script type="module" src="${result.userAssetsBase ? (result.base === "/" ? "" : result.base) + result.userAssetsBase : ""}${resolved}"></script>`,
   );
 }
 
-"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_".split("").reduce((v, c) => (v[c.charCodeAt(0)] = c, v), []);
-"-0123456789_".split("").reduce((v, c) => (v[c.charCodeAt(0)] = c, v), []);
+"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+  .split("")
+  .reduce((v, c) => ((v[c.charCodeAt(0)] = c), v), []);
+"-0123456789_".split("").reduce((v, c) => ((v[c.charCodeAt(0)] = c), v), []);
 
 function spreadAttributes(values = {}, _name, { class: scopedClassName } = {}) {
   let output = "";
@@ -2783,4 +3181,83 @@ function spreadAttributes(values = {}, _name, { class: scopedClassName } = {}) {
   return markHTMLString(output);
 }
 
-export { isRenderInstruction as $, AstroError as A, ActionNotFoundError as B, MiddlewareNoDataOrNextCalled as C, MiddlewareNotAResponse as D, ExpectedImage as E, FailedToFetchRemoteImageDimensions as F, originPathnameSymbol as G, RewriteWithBodyUsed as H, IncompatibleDescriptorOptions as I, GetStaticPathsRequired as J, InvalidGetStaticPathsReturn as K, LocalImageUsedWrongly as L, MissingImageDimension as M, NoImageMetadata as N, InvalidGetStaticPathsEntry as O, GetStaticPathsExpectedParams as P, GetStaticPathsInvalidRouteParam as Q, ROUTE_TYPE_HEADER as R, PageNumberParamNotFound as S, DEFAULT_404_COMPONENT as T, UnsupportedImageFormat as U, NoMatchingStaticPathFound as V, PrerenderDynamicEndpointPathCollide as W, ReservedSlotName as X, renderSlotToString as Y, renderJSX as Z, chunkToString as _, UnsupportedImageConversion as a, ForbiddenRewrite as a0, SessionStorageInitError as a1, SessionStorageSaveError as a2, ASTRO_VERSION as a3, CspNotEnabled as a4, LocalsReassigned as a5, generateCspDigest as a6, PrerenderClientAddressNotAvailable as a7, clientAddressSymbol as a8, ClientAddressNotAvailable as a9, StaticClientAddressNotAvailable as aa, AstroResponseHeadersReassigned as ab, responseSentSymbol as ac, renderPage as ad, REWRITE_DIRECTIVE_HEADER_KEY as ae, REWRITE_DIRECTIVE_HEADER_VALUE as af, renderEndpoint as ag, LocalsNotAnObject as ah, REROUTABLE_STATUS_CODES as ai, nodeRequestAbortControllerCleanupSymbol as aj, NOOP_MIDDLEWARE_HEADER as ak, REDIRECT_STATUS_CODES as al, ActionsReturnedInvalidDataError as am, MissingSharp as an, ExpectedImageOptions as b, ExpectedNotESMImage as c, InvalidImageService as d, createComponent as e, createAstro as f, ImageMissingAlt as g, addAttribute as h, ExperimentalFontsNotEnabled as i, FontFamilyNotFound as j, renderHead as k, renderSlot as l, maybeRenderHead as m, renderComponent as n, renderScript as o, decodeKey as p, decryptString as q, renderTemplate as r, spreadAttributes as s, toStyleString as t, unescapeHTML as u, createSlotValueFromString as v, isAstroComponentFactory as w, REROUTE_DIRECTIVE_HEADER as x, i18nNoLocaleFoundInPath as y, ResponseSentError as z };
+export {
+  isRenderInstruction as $,
+  AstroError as A,
+  ActionNotFoundError as B,
+  MiddlewareNoDataOrNextCalled as C,
+  MiddlewareNotAResponse as D,
+  ExpectedImage as E,
+  FailedToFetchRemoteImageDimensions as F,
+  originPathnameSymbol as G,
+  RewriteWithBodyUsed as H,
+  IncompatibleDescriptorOptions as I,
+  GetStaticPathsRequired as J,
+  InvalidGetStaticPathsReturn as K,
+  LocalImageUsedWrongly as L,
+  MissingImageDimension as M,
+  NoImageMetadata as N,
+  InvalidGetStaticPathsEntry as O,
+  GetStaticPathsExpectedParams as P,
+  GetStaticPathsInvalidRouteParam as Q,
+  ROUTE_TYPE_HEADER as R,
+  PageNumberParamNotFound as S,
+  DEFAULT_404_COMPONENT as T,
+  UnsupportedImageFormat as U,
+  NoMatchingStaticPathFound as V,
+  PrerenderDynamicEndpointPathCollide as W,
+  ReservedSlotName as X,
+  renderSlotToString as Y,
+  renderJSX as Z,
+  chunkToString as _,
+  UnsupportedImageConversion as a,
+  ForbiddenRewrite as a0,
+  SessionStorageInitError as a1,
+  SessionStorageSaveError as a2,
+  ASTRO_VERSION as a3,
+  CspNotEnabled as a4,
+  LocalsReassigned as a5,
+  generateCspDigest as a6,
+  PrerenderClientAddressNotAvailable as a7,
+  clientAddressSymbol as a8,
+  ClientAddressNotAvailable as a9,
+  StaticClientAddressNotAvailable as aa,
+  AstroResponseHeadersReassigned as ab,
+  responseSentSymbol as ac,
+  renderPage as ad,
+  REWRITE_DIRECTIVE_HEADER_KEY as ae,
+  REWRITE_DIRECTIVE_HEADER_VALUE as af,
+  renderEndpoint as ag,
+  LocalsNotAnObject as ah,
+  REROUTABLE_STATUS_CODES as ai,
+  nodeRequestAbortControllerCleanupSymbol as aj,
+  NOOP_MIDDLEWARE_HEADER as ak,
+  REDIRECT_STATUS_CODES as al,
+  ActionsReturnedInvalidDataError as am,
+  MissingSharp as an,
+  ExpectedImageOptions as b,
+  ExpectedNotESMImage as c,
+  InvalidImageService as d,
+  createComponent as e,
+  createAstro as f,
+  ImageMissingAlt as g,
+  addAttribute as h,
+  ExperimentalFontsNotEnabled as i,
+  FontFamilyNotFound as j,
+  renderHead as k,
+  renderSlot as l,
+  maybeRenderHead as m,
+  renderComponent as n,
+  renderScript as o,
+  decodeKey as p,
+  decryptString as q,
+  renderTemplate as r,
+  spreadAttributes as s,
+  toStyleString as t,
+  unescapeHTML as u,
+  createSlotValueFromString as v,
+  isAstroComponentFactory as w,
+  REROUTE_DIRECTIVE_HEADER as x,
+  i18nNoLocaleFoundInPath as y,
+  ResponseSentError as z,
+};

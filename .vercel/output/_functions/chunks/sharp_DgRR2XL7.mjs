@@ -1,17 +1,20 @@
-import { A as AstroError, an as MissingSharp } from './astro/server_Dw1ZVuGC.mjs';
-import { b as baseService, p as parseQuality } from './generic_BjOOhsH-.mjs';
+import {
+  A as AstroError,
+  an as MissingSharp,
+} from "./astro/server_Dw1ZVuGC.mjs";
+import { b as baseService, p as parseQuality } from "./generic_BjOOhsH-.mjs";
 
 let sharp;
 const qualityTable = {
   low: 25,
   mid: 50,
   high: 80,
-  max: 100
+  max: 100,
 };
 async function loadSharp() {
   let sharpImport;
   try {
-    sharpImport = (await import('sharp')).default;
+    sharpImport = (await import("sharp")).default;
   } catch {
     throw new AstroError(MissingSharp);
   }
@@ -25,7 +28,7 @@ const fitMap = {
   none: "outside",
   "scale-down": "inside",
   outside: "outside",
-  inside: "inside"
+  inside: "inside",
 };
 const sharpService = {
   validateOptions: baseService.validateOptions,
@@ -40,7 +43,7 @@ const sharpService = {
     const result = sharp(inputBuffer, {
       failOnError: false,
       pages: -1,
-      limitInputPixels: config.service.config.limitInputPixels
+      limitInputPixels: config.service.config.limitInputPixels,
     });
     result.rotate();
     const withoutEnlargement = Boolean(transform.fit);
@@ -51,17 +54,17 @@ const sharpService = {
         height: Math.round(transform.height),
         fit,
         position: transform.position,
-        withoutEnlargement
+        withoutEnlargement,
       });
     } else if (transform.height && !transform.width) {
       result.resize({
         height: Math.round(transform.height),
-        withoutEnlargement
+        withoutEnlargement,
       });
     } else if (transform.width) {
       result.resize({
         width: Math.round(transform.width),
-        withoutEnlargement
+        withoutEnlargement,
       });
     }
     if (transform.format) {
@@ -71,28 +74,36 @@ const sharpService = {
         if (typeof parsedQuality === "number") {
           quality = parsedQuality;
         } else {
-          quality = transform.quality in qualityTable ? qualityTable[transform.quality] : void 0;
+          quality =
+            transform.quality in qualityTable
+              ? qualityTable[transform.quality]
+              : void 0;
         }
       }
-      const isGifInput = inputBuffer[0] === 71 && // 'G'
-      inputBuffer[1] === 73 && // 'I'
-      inputBuffer[2] === 70 && // 'F'
-      inputBuffer[3] === 56 && // '8'
-      (inputBuffer[4] === 57 || inputBuffer[4] === 55) && // '9' or '7'
-      inputBuffer[5] === 97;
+      const isGifInput =
+        inputBuffer[0] === 71 && // 'G'
+        inputBuffer[1] === 73 && // 'I'
+        inputBuffer[2] === 70 && // 'F'
+        inputBuffer[3] === 56 && // '8'
+        (inputBuffer[4] === 57 || inputBuffer[4] === 55) && // '9' or '7'
+        inputBuffer[5] === 97;
       if (transform.format === "webp" && isGifInput) {
-        result.webp({ quality: typeof quality === "number" ? quality : void 0, loop: 0 });
+        result.webp({
+          quality: typeof quality === "number" ? quality : void 0,
+          loop: 0,
+        });
       } else {
         result.toFormat(transform.format, { quality });
       }
     }
     const { data, info } = await result.toBuffer({ resolveWithObject: true });
-    const needsCopy = "buffer" in data && data.buffer instanceof SharedArrayBuffer;
+    const needsCopy =
+      "buffer" in data && data.buffer instanceof SharedArrayBuffer;
     return {
       data: needsCopy ? new Uint8Array(data) : data,
-      format: info.format
+      format: info.format,
     };
-  }
+  },
 };
 var sharp_default = sharpService;
 

@@ -1,5 +1,5 @@
-import React, { createElement } from 'react';
-import ReactDOM from 'react-dom/server';
+import React, { createElement } from "react";
+import ReactDOM from "react-dom/server";
 
 const contexts = /* @__PURE__ */ new WeakMap();
 const ID_PREFIX = "r";
@@ -11,7 +11,7 @@ function getContext(rendererContextResult) {
     currentIndex: 0,
     get id() {
       return ID_PREFIX + this.currentIndex.toString();
-    }
+    },
   };
   contexts.set(rendererContextResult, ctx);
   return ctx;
@@ -23,45 +23,57 @@ function incrementId(rendererContextResult) {
   return id;
 }
 
-const StaticHtml = ({
-  value,
-  name,
-  hydrate = true
-}) => {
+const StaticHtml = ({ value, name, hydrate = true }) => {
   if (!value) return null;
   const tagName = hydrate ? "astro-slot" : "astro-static-slot";
   return createElement(tagName, {
     name,
     suppressHydrationWarning: true,
-    dangerouslySetInnerHTML: { __html: value }
+    dangerouslySetInnerHTML: { __html: value },
   });
 };
 StaticHtml.shouldComponentUpdate = () => false;
 var static_html_default = StaticHtml;
 
-const slotName = (str) => str.trim().replace(/[-_]([a-z])/g, (_, w) => w.toUpperCase());
+const slotName = (str) =>
+  str.trim().replace(/[-_]([a-z])/g, (_, w) => w.toUpperCase());
 const reactTypeof = Symbol.for("react.element");
 const reactTransitionalTypeof = Symbol.for("react.transitional.element");
 async function check(Component, props, children) {
   if (typeof Component === "object") {
-    return Component["$$typeof"].toString().slice("Symbol(".length).startsWith("react");
+    return Component["$$typeof"]
+      .toString()
+      .slice("Symbol(".length)
+      .startsWith("react");
   }
   if (typeof Component !== "function") return false;
   if (Component.name === "QwikComponent") return false;
-  if (typeof Component === "function" && Component["$$typeof"] === Symbol.for("react.forward_ref"))
+  if (
+    typeof Component === "function" &&
+    Component["$$typeof"] === Symbol.for("react.forward_ref")
+  )
     return false;
-  if (Component.prototype != null && typeof Component.prototype.render === "function") {
-    return React.Component.isPrototypeOf(Component) || React.PureComponent.isPrototypeOf(Component);
+  if (
+    Component.prototype != null &&
+    typeof Component.prototype.render === "function"
+  ) {
+    return (
+      React.Component.isPrototypeOf(Component) ||
+      React.PureComponent.isPrototypeOf(Component)
+    );
   }
   let isReactComponent = false;
   function Tester(...args) {
     try {
       const vnode = Component(...args);
-      if (vnode && (vnode["$$typeof"] === reactTypeof || vnode["$$typeof"] === reactTransitionalTypeof)) {
+      if (
+        vnode &&
+        (vnode["$$typeof"] === reactTypeof ||
+          vnode["$$typeof"] === reactTransitionalTypeof)
+      ) {
         isReactComponent = true;
       }
-    } catch {
-    }
+    } catch {}
     return React.createElement("div");
   }
   await renderToStaticMarkup.call(this, Tester, props, children);
@@ -78,7 +90,12 @@ async function getNodeWritable() {
 function needsHydration(metadata) {
   return metadata?.astroStaticSlot ? !!metadata.hydrate : true;
 }
-async function renderToStaticMarkup(Component, props, { default: children, ...slotted }, metadata) {
+async function renderToStaticMarkup(
+  Component,
+  props,
+  { default: children, ...slotted },
+  metadata,
+) {
   let prefix;
   if (this && this.result) {
     prefix = incrementId(this.result);
@@ -91,18 +108,18 @@ async function renderToStaticMarkup(Component, props, { default: children, ...sl
     slots[name] = React.createElement(static_html_default, {
       hydrate: needsHydration(metadata),
       value,
-      name
+      name,
     });
   }
   const newProps = {
     ...props,
-    ...slots
+    ...slots,
   };
   const newChildren = children ?? props.children;
   if (newChildren != null) {
     newProps.children = React.createElement(static_html_default, {
       hydrate: needsHydration(metadata),
-      value: newChildren
+      value: newChildren,
     });
   }
   const formState = this ? await getFormState(this) : void 0;
@@ -114,7 +131,7 @@ async function renderToStaticMarkup(Component, props, { default: children, ...sl
   const vnode = React.createElement(Component, newProps);
   const renderOptions = {
     identifierPrefix: prefix,
-    formState
+    formState,
   };
   let html;
   if ("renderToReadableStream" in ReactDOM) {
@@ -124,9 +141,7 @@ async function renderToStaticMarkup(Component, props, { default: children, ...sl
   }
   return { html, attrs };
 }
-async function getFormState({
-  result
-}) {
+async function getFormState({ result }) {
   const { request, actionResult } = result;
   if (!actionResult) return void 0;
   if (!isFormRequest(request.headers.get("content-type"))) return void 0;
@@ -157,10 +172,10 @@ async function renderToPipeableStreamAsync(vnode, options) {
             },
             destroy() {
               resolve(html);
-            }
-          })
+            },
+          }),
         );
-      }
+      },
     });
   });
 }
@@ -182,9 +197,14 @@ async function readResult(stream) {
   }
 }
 async function renderToReadableStreamAsync(vnode, options) {
-  return await readResult(await ReactDOM.renderToReadableStream(vnode, options));
+  return await readResult(
+    await ReactDOM.renderToReadableStream(vnode, options),
+  );
 }
-const formContentTypes = ["application/x-www-form-urlencoded", "multipart/form-data"];
+const formContentTypes = [
+  "application/x-www-form-urlencoded",
+  "multipart/form-data",
+];
 function isFormRequest(contentType) {
   const type = contentType?.split(";")[0].toLowerCase();
   return formContentTypes.some((t) => type === t);
@@ -193,10 +213,19 @@ const renderer = {
   name: "@astrojs/react",
   check,
   renderToStaticMarkup,
-  supportsAstroStaticSlot: true
+  supportsAstroStaticSlot: true,
 };
 var server_default = renderer;
 
-const renderers = [Object.assign({"name":"@astrojs/react","clientEntrypoint":"@astrojs/react/client.js","serverEntrypoint":"@astrojs/react/server.js"}, { ssr: server_default }),];
+const renderers = [
+  Object.assign(
+    {
+      name: "@astrojs/react",
+      clientEntrypoint: "@astrojs/react/client.js",
+      serverEntrypoint: "@astrojs/react/server.js",
+    },
+    { ssr: server_default },
+  ),
+];
 
 export { renderers };

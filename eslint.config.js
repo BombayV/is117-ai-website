@@ -1,4 +1,6 @@
 import eslintPluginAstro from "eslint-plugin-astro";
+import { globalIgnores } from "eslint/config";
+
 export default [
   // add more generic rule sets here, such as:
   // js.configs.recommended,
@@ -9,4 +11,5 @@ export default [
       // "astro/no-set-html-directive": "error"
     },
   },
+  globalIgnores(["./src/components/ui/"]),
 ];
