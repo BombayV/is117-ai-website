@@ -1,6 +1,6 @@
 # is117-ai-website
 
-Website used for NJIT class project. Check out the live version [here](https://aisite-is117.vercel.app).
+Website used for NJIT class project. Check out the live version [here](https://is117-ai-website.pages.dev).
 
 # Commands
 
