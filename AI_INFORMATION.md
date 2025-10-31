@@ -51,3 +51,10 @@
 For all the following pages, implement a consistent layout and design that aligns with the overall website theme. Use clear and concise language to communicate the error or issue to the user, and provide helpful navigation options to guide them back to the main sections of the site.
 
 - 400, 401, 403, 404, 500, 502, 503, 504
+
+## Implemented components (auto-added)
+
+- `src/components/Header.astro` — site header with logo, primary navigation (Home, Shop, Blog, Contact), search bar, cart icon with item count badge, user account icon, and a responsive mobile menu.
+- `src/components/Footer.astro` — site footer with company links (About, Privacy, Terms, Help), social icons, newsletter signup form, and copyright/tagline.
+
+Both components are wired into `src/layouts/main.astro` so they are visible across all routes. They are styled with Tailwind utility classes and contain minimal client-side scripts for the mobile menu toggle and simple form actions.
