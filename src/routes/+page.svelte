@@ -16,7 +16,7 @@
 		>
 		</span>
 		<p
-			class="bg-opacity-10 z-10 -skew-x-12 rounded-full border border-gray-950/30 bg-gray-300/50 bg-clip-padding px-8 py-3 text-3xl font-semibold text-sky-950 drop-shadow-sm backdrop-blur backdrop-contrast-100 backdrop-saturate-100 backdrop-filter transition-colors duration-500 group-hover:bg-sky-100/30"
+			class="bg-opacity-10 z-10 -skew-x-12 rounded-full border border-gray-100/30 bg-gray-950/80 px-8 py-3 text-3xl font-extralight text-gray-50 drop-shadow-sm"
 		>
 			Men
 		</p>
@@ -35,7 +35,7 @@
 		>
 		</span>
 		<p
-			class="bg-opacity-10 z-10 -skew-x-12 rounded-full border border-gray-950/30 bg-gray-300/50 bg-clip-padding px-8 py-3 text-3xl font-semibold text-rose-950 drop-shadow-sm backdrop-blur backdrop-contrast-100 backdrop-saturate-100 backdrop-filter transition-colors duration-500 group-hover:bg-rose-100/30"
+			class="bg-opacity-10 z-10 -skew-x-12 rounded-full border border-gray-100/30 bg-gray-950/80 px-8 py-3 text-3xl font-extralight text-gray-50 drop-shadow-sm"
 		>
 			Women
 		</p>

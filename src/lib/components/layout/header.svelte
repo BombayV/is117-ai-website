@@ -1,10 +1,15 @@
 <script>
 	import { Handbag, Menu, Search } from '@lucide/svelte';
+
+	let { onclicksidebar, onclicksearch, onclickcart } = $props();
 </script>
 
 <div class="fixed top-0 left-0 z-50 grid h-16 w-full grid-cols-3 place-items-center px-6 md:px-10">
 	<div class="flex w-full items-center justify-start">
-		<button class="cursor-pointer rounded-full p-2 transition duration-500 hover:bg-black/10">
+		<button
+			onclick={onclicksidebar}
+			class="cursor-pointer rounded-full p-2 transition duration-500 hover:bg-gray-900/30"
+		>
 			<Menu class="size-5 text-white drop-shadow-sm" />
 		</button>
 	</div>
@@ -15,12 +20,14 @@
 	</h1>
 	<div class="flex w-full items-center justify-end gap-x-4">
 		<button
-			class="cursor-pointer rounded-full p-2 transition-colors duration-500 hover:bg-black/10"
+			onclick={onclicksearch}
+			class="cursor-pointer rounded-full p-2 transition-colors duration-500 hover:bg-gray-900/30"
 		>
 			<Search class="size-5 text-white drop-shadow-sm" />
 		</button>
 		<button
-			class="cursor-pointer rounded-full p-2 transition-colors duration-500 hover:bg-black/10"
+			onclick={onclickcart}
+			class="cursor-pointer rounded-full p-2 transition-colors duration-500 hover:bg-gray-900/30"
 		>
 			<Handbag class="size-5 text-white drop-shadow-sm" />
 		</button>
