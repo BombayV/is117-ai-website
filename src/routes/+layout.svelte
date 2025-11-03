@@ -9,7 +9,7 @@
 
 	let isSidebarActive = $state(false);
 	let isCartActive = $state(false);
-	let isSearchActive = $state(true);
+	let isSearchActive = $state(false);
 
 	let { children } = $props();
 </script>

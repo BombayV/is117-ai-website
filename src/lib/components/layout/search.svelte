@@ -2,7 +2,7 @@
 	import { Apple, ChevronLeft, ChevronRight, SearchIcon, XIcon } from '@lucide/svelte';
 	import { fade, slide } from 'svelte/transition';
 
-	let { isSearchActive = $bindable(true) } = $props();
+	let { isSearchActive = $bindable(false) } = $props();
 
 	const SEARCH_SUGGESTIONS = [
 		{ title: 'New Arrivals', filter: '?category=new' },
