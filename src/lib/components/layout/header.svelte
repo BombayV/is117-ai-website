@@ -1,12 +1,18 @@
 <script>
 	import { Handbag, Menu, Search } from '@lucide/svelte';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 
 	let { onclicksidebar, onclicksearch, onclickcart } = $props();
 
-	let darkMode = $state(false);
+	let darkMode = $state(page.url.pathname.includes('/products'));
 
 	const handleScroll = () => {
+		if (page.url.pathname.includes('/products')) {
+			darkMode = true;
+			return;
+		}
+		
 		darkMode = window.scrollY > 350;
 	};
 

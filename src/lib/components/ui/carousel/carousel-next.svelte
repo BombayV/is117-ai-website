@@ -10,6 +10,7 @@
 		class: className,
 		variant = 'outline',
 		size = 'icon',
+		onPress,
 		...restProps
 	} = $props();
 
@@ -19,6 +20,7 @@
 		e.preventDefault();
 		e.stopPropagation();
 		emblaCtx.scrollNext();
+		onPress?.(e);
 	};
 </script>
 

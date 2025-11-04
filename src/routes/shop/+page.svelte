@@ -42,6 +42,7 @@
 </div>
 <div class="relative flex w-full items-center justify-between px-6 py-6 md:px-10">
 	<button
+		onclick={() => (isFiltersSidebarActive = true)}
 		class="relative flex w-fit cursor-pointer items-center gap-x-1.5 py-1 text-sm font-light text-gray-600"
 	>
 		<Funnel class="size-4" strokeWidth="1.3" />
