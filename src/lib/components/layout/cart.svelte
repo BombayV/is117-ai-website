@@ -1,6 +1,7 @@
 <script>
 	import { Apple, ChevronLeft, ChevronRight, XIcon } from '@lucide/svelte';
 	import { fade, slide } from 'svelte/transition';
+	import Button from '../ui/button/button.svelte';
 
 	let myClothes = [
 		{
@@ -19,7 +20,7 @@
 
 {#if isCartActive}
 	<div
-		in:slide={{ duration: 300, axis: 'x' }}
+		in:slide={{ duration: 500, axis: 'x' }}
 		out:slide={{ duration: 300, axis: 'x' }}
 		class={`fixed top-0 right-0 z-60 flex h-full w-full flex-col bg-gray-50 transition-all duration-700 ease-in-out sm:max-w-md`}
 	>
@@ -39,7 +40,7 @@
 				<div class="cursor-pointer px-6 py-4 hover:bg-gray-200"></div>
 			{/each}
 		</div>
-		<div class="px-4 py-2">
+		<div class="px-4 py-2 pb-4">
 			<div class="relative flex w-full flex-col bg-gray-100">
 				<div class="flex items-center justify-between px-4 py-3">
 					<p class="text-xs font-light">Order Summary</p>
@@ -51,17 +52,14 @@
 					<p class="text-xs font-light">$29.99</p>
 				</div>
 			</div>
-			<button
-				class="mt-4 w-full cursor-pointer rounded-md bg-gray-950 py-3 text-white transition hover:bg-gray-900"
-			>
-				Checkout
-			</button>
-			<button
-				class="mt-2 flex w-full cursor-pointer items-center justify-center rounded-md border-2 border-black py-3 text-black transition hover:bg-gray-200"
+			<Button class="mt-4 h-12 w-full cursor-pointer rounded-none">Checkout</Button>
+			<Button
+				variant="outline"
+				class="mt-2 flex h-12 w-full cursor-pointer items-center justify-center rounded-none"
 			>
 				<Apple class="mr-2 size-5" strokeWidth={1} />
 				Apple Pay
-			</button>
+			</Button>
 		</div>
 	</div>
 {/if}

@@ -1,6 +1,19 @@
 <script>
 </script>
 
+<svelte:head>
+	<title>Aegis Sports | Home</title>
+	<meta
+		name="description"
+		content="Welcome to Aegis Sports, your ultimate destination for premium sportswear and accessories. Explore our exclusive collections for men and women, designed to elevate your performance and style."
+	/>
+	<meta name="og:title" content="Aegis Sports | Home" />
+	<meta
+		name="og:description"
+		content="Welcome to Aegis Sports, your ultimate destination for premium sportswear and accessories. Explore our exclusive collections for men and women, designed to elevate your performance and style."
+	/>
+</svelte:head>
+
 <main class="relative grid h-dvh w-full grid-cols-1 gap-1 bg-gray-50 px-1 lg:grid-cols-2">
 	<a
 		href="/shop?gender=men"

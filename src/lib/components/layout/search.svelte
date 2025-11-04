@@ -13,7 +13,7 @@
 
 {#if isSearchActive}
 	<div
-		in:slide={{ duration: 300, axis: 'y' }}
+		in:slide={{ duration: 500, axis: 'y' }}
 		out:slide={{ duration: 300, axis: 'y' }}
 		class={`fixed top-0 left-0 z-60 flex h-full w-full flex-col bg-gray-50 transition-all duration-700 ease-in-out sm:max-h-96`}
 	>
