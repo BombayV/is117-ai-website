@@ -1,6 +1,6 @@
 # is117-ai-website
 
-Website used for NJIT class project. Check out the live version [here](https://aegis-sports.bombayv.com).
+Website used for NJIT class project. Check out the live version [here](https://aegissports.bombayv.com).
 
 # Commands
 
